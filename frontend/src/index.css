@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100 font-sans antialiased;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Glassmorphism & Card Effects */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-hover {
+  transition: all 0.2s ease-in-out;
+}
+
+.glass-panel-hover:hover {
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 8px 24px -4px rgba(0, 102, 254, 0.15);
+}
+
+/* Glowing Accent Badges */
+.badge-high {
+  @apply bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-sm shadow-rose-900/20;
+}
+
+.badge-medium {
+  @apply bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm shadow-amber-900/20;
+}
+
+.badge-low {
+  @apply bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm shadow-emerald-900/20;
+}
+
+.badge-brand {
+  @apply bg-brand-500/10 text-brand-400 border border-brand-500/20 shadow-sm shadow-brand-900/20;
+}
