@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from app.core.config import settings
 
 from app.core.database import Base, engine, SessionLocal
 import app.models.domain  # noqa: F401 — ensure all ORM models register with Base before create_all
