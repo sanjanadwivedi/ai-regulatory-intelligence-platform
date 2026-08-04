@@ -78,8 +78,12 @@ async def global_exception_handler(request: Request, exc: Exception):
     import traceback
     tb = traceback.format_exc()
     logger.error(f"Unhandled exception on {request.method} {request.url}: {tb}")
-    return JSONResponse(status_code=500, content={"detail": str(exc), "traceback": tb})
-
+    
+    # Only return detailed traceback in development environment
+    if settings.ENVIRONMENT == "development":
+        return JSONResponse(status_code=500, content={"detail": str(exc), "traceback": tb})
+    
+    return JSONResponse(status_code=500, content={"detail": "Internal server error. Please contact support."})
 
 
 app.add_middleware(
@@ -88,12 +92,14 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:5173",
-        "http://127.0.0.1:5173"
+        "http://127.0.0.1:5173",
+        settings.FRONTEND_URL
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Trace-ID"],
 )
+
 
 # Request Correlation & Trace Middleware
 @app.middleware("http")

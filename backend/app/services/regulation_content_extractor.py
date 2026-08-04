@@ -256,7 +256,7 @@ class FINRAOfficialAdapter:
         """Fetch FINRA regulatory notices via official RSS feed."""
         try:
             import urllib.request
-            headers = {"User-Agent": "ReguGuardAI-CompliancePlatform/1.0"}
+            headers = {"User-Agent": "AegisAI-CompliancePlatform/1.0"}
             req = urllib.request.Request(rss_url or FINRAOfficialAdapter.FINRA_RSS_URL, headers=headers)
             with urllib.request.urlopen(req, timeout=15) as resp:
                 xml_data = resp.read()
@@ -305,7 +305,7 @@ class FINRAOfficialAdapter:
             import json
             url = f"{FINRAOfficialAdapter.FINRA_DATA_API}/data/group/otcMarket/name/{dataset}"
             headers = {
-                "User-Agent": "ReguGuardAI-CompliancePlatform/1.0",
+                "User-Agent": "AegisAI-CompliancePlatform/1.0",
                 "Accept": "application/json"
             }
             req = urllib.request.Request(url, headers=headers)

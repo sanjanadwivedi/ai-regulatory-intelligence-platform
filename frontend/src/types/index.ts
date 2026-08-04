@@ -1,4 +1,5 @@
 export type NavSection =
+  | 'landing'
   | 'workspace'
   | 'repository'
   | 'graph'
@@ -9,6 +10,7 @@ export type NavSection =
   | 'insights'
   | 'security'
   | 'batch_re_extract';
+
 
 
 export type TaskStatus =

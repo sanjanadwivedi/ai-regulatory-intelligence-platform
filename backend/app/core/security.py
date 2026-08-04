@@ -29,16 +29,23 @@ def create_access_token(subject: Any, expires_delta: Optional[timedelta] = None)
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
+from fastapi import Depends, HTTPException, status, Request
+
 def get_current_user(
+    request: Request = None,
     db: Session = Depends(get_db),
     token: Optional[str] = Depends(oauth2_scheme)
 ) -> EnterpriseUser:
+    if not token and request and getattr(request, "cookies", None):
+        token = request.cookies.get("access_token")
+
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication token missing",
             headers={"WWW-Authenticate": "Bearer"}
         )
+
 
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])

@@ -40,8 +40,7 @@ interface NavbarProps {
   onSearchClick: () => void;
   onOpenTour: () => void;
   onOpenSetup?: () => void;
-  /** Passed by App.tsx — kept for API compatibility but not used for the badge count.
-   *  The badge is driven entirely by liveNotifications to avoid double-counting. */
+  onNavigateLanding?: () => void;
   unreadNotifications: number;
   tasks?: ComplianceTask[];
   currentPersona: UserPersona;
@@ -54,6 +53,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSearchClick,
   onOpenTour,
   onOpenSetup,
+  onNavigateLanding,
   tasks = [],
   currentPersona,
   onSelectPersona,
@@ -141,8 +141,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="h-16 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
       {/* Brand */}
-      <div className="flex items-center space-x-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-brand-500 to-indigo-500 p-0.5 shadow-lg shadow-brand-500/20 flex items-center justify-center">
+      <div
+        className="flex items-center space-x-3 cursor-pointer group"
+        onClick={() => onNavigateLanding && onNavigateLanding()}
+      >
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-brand-500 to-indigo-500 p-0.5 shadow-lg shadow-brand-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
           <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
             <ShieldCheck className="w-5 h-5 text-brand-400" />
           </div>
@@ -150,7 +153,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div>
           <div className="flex items-center space-x-2">
             <span className="font-extrabold text-lg tracking-tight text-white font-sans">
-              ReguGuard <span className="text-brand-400">AI</span>
+              Aegis <span className="text-brand-400">AI</span>
             </span>
             <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest bg-brand-500/20 text-brand-300 rounded border border-brand-500/30 flex items-center gap-1">
               <Sparkles className="w-3 h-3" /> Enterprise
@@ -161,6 +164,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </p>
         </div>
       </div>
+
 
       {/* Actions */}
       <div className="flex items-center space-x-3">

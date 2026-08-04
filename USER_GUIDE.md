@@ -1,6 +1,6 @@
-# ReguGuard AI – Platform Quick Start & Evaluation Guide
+# Aegis AI – Platform Quick Start & Evaluation Guide
 
-Welcome to **ReguGuard AI**, an AI-powered Regulatory Intelligence Platform built for enterprise banking, financial services, and capital markets.
+Welcome to **Aegis AI**, an AI-powered Regulatory Intelligence Platform built for enterprise banking, financial services, and capital markets.
 
 ---
 

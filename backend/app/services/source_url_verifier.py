@@ -121,7 +121,7 @@ def fetch_url_text(url: str, timeout: int = 12, authority: str = "RBI") -> Tuple
     try:
         import urllib.request
         headers = {
-            "User-Agent": "ReguGuardAI-CompliancePlatform/1.0 (compliance@reguguard.ai)",
+            "User-Agent": "AegisAI-CompliancePlatform/1.0 (compliance@aegis.ai)",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9"
         }

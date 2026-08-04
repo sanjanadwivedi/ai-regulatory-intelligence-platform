@@ -9,14 +9,16 @@ import {
   TaskStatus
 } from '../types';
 
-const API_BASE = '/api/v1';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
+
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
@@ -56,6 +58,16 @@ export const ServiceAPI = {
     }
     return res.data;
   },
+
+  register: async (full_name: string, email: string, password: string, role?: string): Promise<any> => {
+    const res = await api.post('/auth/register', { full_name, email, password, role: role || 'Compliance Officer' });
+    if (res.data.access_token) {
+      localStorage.setItem('access_token', res.data.access_token);
+      localStorage.setItem('user_info', JSON.stringify(res.data));
+    }
+    return res.data;
+  },
+
 
   // ---------------------------------------------------------------------------
   // Regulatory Sources — Bounded Context: Regulatory Intelligence

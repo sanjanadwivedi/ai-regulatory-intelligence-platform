@@ -8,7 +8,8 @@ import {
   Bot,
   Radio,
   ShieldCheck,
-  RefreshCw
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
 import { NavSection } from '../../types';
 import { formatRelativeTime } from '../../utils/formatTime';
@@ -25,7 +26,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   pendingReviewCount,
 }) => {
   const menuItems = [
+    { id: 'landing' as NavSection, label: 'Home', icon: Sparkles },
     { id: 'workspace' as NavSection, label: 'Workspace', icon: Home },
+
     { id: 'repository' as NavSection, label: 'Regulations', icon: BookOpen },
     { id: 'graph' as NavSection, label: 'Knowledge Graph', icon: GitBranch, isNew: true },
     { id: 'reviews' as NavSection, label: 'Reviews & Sign-offs', icon: CheckCircle2, badge: pendingReviewCount },
@@ -35,6 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'batch_re_extract' as NavSection, label: 'Batch Re-Extract', icon: RefreshCw },
     { id: 'security' as NavSection, label: 'Security & Audit', icon: ShieldCheck },
   ];
+
 
 
   return (

@@ -170,4 +170,51 @@ def test_ssrf_protection_validator():
         _validate_url(url)
 
 
+def test_secure_login_endpoint():
+    from app.core.database import SessionLocal
+    from app.api.v1.endpoints.auth import login, LoginRequest
+    from app.models.domain import EnterpriseUser
+    from app.core.security import get_password_hash
+    from fastapi import HTTPException, Response
+
+    db = SessionLocal()
+    try:
+        user = db.query(EnterpriseUser).filter(EnterpriseUser.email == "test_auth_user@example.com").first()
+        if not user:
+            user = EnterpriseUser(
+                full_name="Test User",
+                role="Compliance Officer",
+                email="test_auth_user@example.com",
+                hashed_password=get_password_hash("testpass123")
+            )
+            db.add(user)
+            db.commit()
+
+        # 1. Non-existent user must fail (no auto-registration)
+        req_unknown = LoginRequest(email="nonexistent_user@example.com", password="somepassword")
+        res_dummy = Response()
+        with pytest.raises(HTTPException) as exc_info:
+            login(response=res_dummy, login_data=req_unknown, db=db)
+        assert exc_info.value.status_code == 401
+        assert "User not found" in exc_info.value.detail
+
+        # 2. Existing user with wrong password must fail
+        req_wrong_pass = LoginRequest(email="test_auth_user@example.com", password="wrongpassword")
+        with pytest.raises(HTTPException) as exc_info:
+            login(response=res_dummy, login_data=req_wrong_pass, db=db)
+        assert exc_info.value.status_code == 401
+        assert "Incorrect password" in exc_info.value.detail
+
+        # 3. Existing user with correct password succeeds and sets cookie
+        req_valid = LoginRequest(email="test_auth_user@example.com", password="testpass123")
+        res_valid = Response()
+        token_data = login(response=res_valid, login_data=req_valid, db=db)
+        assert "access_token" in token_data
+        assert token_data["full_name"] == "Test User"
+    finally:
+        db.close()
+
+
+
+
 

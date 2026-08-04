@@ -166,7 +166,7 @@ class LiveStatutoryCrawlerEngine:
                 "last_scraped_at": datetime.datetime.utcnow().isoformat(),
             }
 
-        headers = {"User-Agent": "ReguGuardEnterpriseAdmin/1.0 (compliance@reguguard.ai)"}
+        headers = {"User-Agent": "AegisEnterpriseAdmin/1.0 (compliance@aegis.ai)"}
 
     @staticmethod
     def _scrape_finra_official(source_url: str) -> Dict[str, Any]:

@@ -17,6 +17,8 @@ import { GuidedTourModal } from './components/common/GuidedTourModal';
 
 import { EnterpriseSetupModal } from './components/common/EnterpriseSetupModal';
 import { LoginModal } from './components/common/LoginModal';
+import { LandingPage } from './components/landing/LandingPage';
+
 import {
   NavSection,
   Regulation,
@@ -81,13 +83,11 @@ const DEFAULT_PERSONA: UserPersona = {
 };
 
 export function App() {
-  const [activeSection, setActiveSection] = useState<NavSection>('workspace');
+  const [activeSection, setActiveSection] = useState<NavSection>('landing');
   const [selectedRegId, setSelectedRegId] = useState<string | null>(null);
 
   // Auth & Modal States
-  const [showLoginModal, setShowLoginModal] = useState(
-    !localStorage.getItem('access_token')
-  );
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [showSetupModal, setShowSetupModal] = useState(false);
 
@@ -284,18 +284,21 @@ export function App() {
   // ---------------------------------------------------------------------------
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      <Navbar
-        onSearchClick={() => openCopilotWithQuery('')}
-        onOpenTour={() => setShowTour(true)}
-        onOpenSetup={() => setShowSetupModal(true)}
-        unreadNotifications={navbarUnreadCount}
-        tasks={tasks}
-        currentPersona={currentPersona}
-        onSelectPersona={(persona) => {
-          setCurrentPersona(persona);
-          setNewTaskAssignee(persona.name);
-        }}
-      />
+      {activeSection !== 'landing' && (
+        <Navbar
+          onSearchClick={() => openCopilotWithQuery('')}
+          onOpenTour={() => setShowTour(true)}
+          onOpenSetup={() => setShowSetupModal(true)}
+          onNavigateLanding={() => setActiveSection('landing')}
+          unreadNotifications={navbarUnreadCount}
+          tasks={tasks}
+          currentPersona={currentPersona}
+          onSelectPersona={(persona) => {
+            setCurrentPersona(persona);
+            setNewTaskAssignee(persona.name);
+          }}
+        />
+      )}
 
       <GuidedTourModal
         isOpen={showTour}
@@ -318,19 +321,34 @@ export function App() {
         }}
       />
 
-      <div className="flex-1 flex">
-        <Sidebar
-          activeSection={activeSection}
-          onSelectSection={(sec) => {
-            if (sec !== 'repository') setSelectedRegId(null);
+      {activeSection === 'landing' ? (
+        <LandingPage
+          onNavigate={(sec) => {
+            const isLoggedIn = !!localStorage.getItem('access_token');
+            if (!isLoggedIn) {
+              setShowLoginModal(true);
+              return;
+            }
+            setSelectedRegId(null);
             setActiveSection(sec);
           }}
-          pendingReviewCount={pendingReviewCount}
+          onOpenLogin={() => setShowLoginModal(true)}
         />
+      ) : (
+        <div className="flex-1 flex">
+          <Sidebar
+            activeSection={activeSection}
+            onSelectSection={(sec) => {
+              if (sec !== 'repository') setSelectedRegId(null);
+              setActiveSection(sec);
+            }}
+            pendingReviewCount={pendingReviewCount}
+          />
 
-        <main className="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
-          <ErrorBoundary>
-            {activeSection === 'workspace' && (
+          <main className="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
+            <ErrorBoundary>
+              {activeSection === 'workspace' && (
+
               <CODashboard
                 regulations={regulations}
                 tasks={tasks}
@@ -437,6 +455,8 @@ export function App() {
           </ErrorBoundary>
         </main>
       </div>
+      )}
+
 
       {/* Task Creation Modal */}
       {showTaskModal && (
@@ -543,7 +563,11 @@ export function App() {
         </div>
       )}
 
-      <LoginModal isOpen={showLoginModal} onSuccess={handleLoginSuccess} />
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onSuccess={handleLoginSuccess} 
+        onClose={() => setShowLoginModal(false)} 
+      />
     </div>
   );
 }

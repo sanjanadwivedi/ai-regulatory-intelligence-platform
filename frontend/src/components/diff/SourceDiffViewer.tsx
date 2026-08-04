@@ -566,7 +566,7 @@ export const SourceDiffViewer: React.FC<SourceDiffViewerProps> = ({ regulation, 
         <div className="flex flex-wrap items-center justify-between pt-3 border-t border-slate-800 text-xs text-slate-400 gap-3 shrink-0">
           <div className="flex items-center space-x-2 font-mono text-[11px]">
             <Sparkles className="w-3.5 h-3.5 text-brand-400" />
-            <span>Semantic Clause Diff Engine v1.0 • ReguGuard AI</span>
+            <span>Semantic Clause Diff Engine v1.0 • Aegis AI</span>
           </div>
 
           <button

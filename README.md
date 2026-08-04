@@ -1,6 +1,6 @@
-# ReguGuard AI — Comprehensive Platform Technical Manual & Module Architecture Guide
+# Aegis AI — Comprehensive Platform Technical Manual & Module Architecture Guide
 
-Welcome to the definitive architecture documentation and module manual for **ReguGuard AI** — an enterprise-grade AI-powered Regulatory Intelligence & Automated Compliance Platform built for Banking, Financial Services, Technology & Cybersecurity, Healthcare, and Capital Markets.
+Welcome to the definitive architecture documentation and module manual for **Aegis AI** — an enterprise-grade AI-powered Regulatory Intelligence & Automated Compliance Platform built for Banking, Financial Services, Technology & Cybersecurity, Healthcare, and Capital Markets.
 
 ---
 
@@ -37,7 +37,7 @@ Welcome to the definitive architecture documentation and module manual for **Reg
 
 Regulated financial institutions, cloud technology providers, and healthcare entities face immense regulatory complexity due to fast-evolving statutory mandates issued by authorities like the **Reserve Bank of India (RBI)**, **US SEC**, **CERT-In**, and **HHS HIPAA**.
 
-Traditional compliance operations rely on manual document reviews, creating operational bottlenecks and compliance risks. **ReguGuard AI** bridges this gap by automatically ingesting, parsing, classifying, mapping, and enforcing statutory directives through an end-to-end AI-driven pipeline.
+Traditional compliance operations rely on manual document reviews, creating operational bottlenecks and compliance risks. **Aegis AI** bridges this gap by automatically ingesting, parsing, classifying, mapping, and enforcing statutory directives through an end-to-end AI-driven pipeline.
 
 ### Core Value Proposition:
 - **Beyond Summarization**: Doesn't just summarize text; maps every clause to internal controls, corporate policies, business processes, and IT applications.
@@ -258,7 +258,7 @@ graph TD
 Create a `.env` file inside the `backend/` directory:
 
 ```env
-PROJECT_NAME="ReguGuard AI Platform"
+PROJECT_NAME="Aegis AI Platform"
 VERSION="1.0.0"
 API_V1_STR="/api/v1"
 SECRET_KEY="your-production-secret-key-here"

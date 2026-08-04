@@ -4,17 +4,43 @@ from app.models.domain import (
     RegulatorySource, Regulation, Section, Obligation, Requirement,
     KnowledgeGraphChain, ComplianceTask, AuditLog,
     InternalControl, EnterprisePolicy, EnterpriseProcess, EnterpriseApplication,
-    EnterpriseProfile
+    EnterpriseProfile, EnterpriseUser
 )
+
 
 def seed_database_data():
     db = SessionLocal()
     try:
+        # Always ensure canonical enterprise users exist and passwords match ChangeMe!2026
+        from app.core.security import get_password_hash
+        canonical_users = [
+            {"email": "admin@aegis.com", "full_name": "System Administrator", "role": "ADMIN", "password": "ChangeMe!2026"},
+            {"email": "officer@aegis.com", "full_name": "Compliance Officer", "role": "Compliance Officer", "password": "ChangeMe!2026"},
+            {"email": "sanjana@hdfcbank.com", "full_name": "Sanjana Dwivedi", "role": "Compliance Officer", "password": "ChangeMe!2026"},
+        ]
+        for udata in canonical_users:
+            u = db.query(EnterpriseUser).filter(EnterpriseUser.email == udata["email"]).first()
+            if not u:
+                u = EnterpriseUser(
+                    full_name=udata["full_name"],
+                    role=udata["role"],
+                    email=udata["email"],
+                    hashed_password=get_password_hash(udata["password"])
+                )
+                db.add(u)
+            else:
+                u.full_name = udata["full_name"]
+                u.role = udata["role"]
+                u.hashed_password = get_password_hash(udata["password"])
+        db.commit()
+
+
         # Check if already fully populated
         existing_regs = db.query(Regulation).count()
         existing_controls = db.query(InternalControl).count()
         if existing_regs >= 5 and existing_controls >= 5:
             return # Fully seeded
+
 
         print("Seeding Enterprise Regulatory Knowledge Ontology & Graph...")
 
@@ -32,6 +58,25 @@ def seed_database_data():
         db.query(EnterpriseApplication).delete()
         db.query(EnterpriseProfile).delete()
         db.commit()
+
+        # Seed initial enterprise users if not present
+        if db.query(EnterpriseUser).count() == 0:
+            from app.core.security import get_password_hash
+            u1 = EnterpriseUser(
+                full_name="Sanjana",
+                role="Compliance Officer",
+                email="sanjana@hdfcbank.com",
+                hashed_password=get_password_hash("password123")
+            )
+            u2 = EnterpriseUser(
+                full_name="Admin User",
+                role="ADMIN",
+                email="admin@aegis.com",
+                hashed_password=get_password_hash("admin123")
+            )
+            db.add_all([u1, u2])
+            db.commit()
+
 
         # 1. Sources
         sources = [

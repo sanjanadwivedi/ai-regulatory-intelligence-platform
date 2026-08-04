@@ -18,12 +18,12 @@ export const GuidedTourModal: React.FC<GuidedTourModalProps> = ({
 
   const TOUR_STEPS = [
     {
-      title: 'Welcome to ReguGuard AI',
+      title: 'Welcome to Aegis AI',
       icon: Sparkles,
       color: 'text-brand-400',
       badge: 'Step 1 of 4: Platform Overview',
       description:
-        'ReguGuard AI automates regulatory change management for enterprise banks and financial institutions. It continuously ingests statutory circulars (RBI, SEC), builds knowledge graphs, and enforces dual-control compliance sign-offs.',
+        'Aegis AI automates regulatory change management for enterprise banks and financial institutions. It continuously ingests statutory circulars (RBI, SEC), builds knowledge graphs, and enforces dual-control compliance sign-offs.',
       actionLabel: 'Explore Morning Briefing',
       targetSection: 'workspace',
     },
