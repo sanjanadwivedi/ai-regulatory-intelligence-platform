@@ -1,0 +1,203 @@
+﻿python : SECURITY WARNING: Using default insecure SECRET_KEY. Set SECRET_KEY in .env for production!
+At line:1 char:1
++ python scripts/dump_evidence_matrix.py 2>&1 | Out-File -Encoding utf8 ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (SECURITY WARNIN...for production!:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+EVALUATED 10 REGULATIONS FOR NEC India
+
+================================================================================
+REGULATION: CERT-In Directions under Section 70B(6) of Information Technology Act, 2000
+AUTHORITY: Indian Computer Emergency Response Team (CERT-In & MeitY)
+STATUS: APPLICABLE
+SCORE: 0.95
+MATCHED CRITERIA (2):
+  [MATCH] Territorial Jurisdiction: Regulation has global territorial scope (India & Global). Organization operates in: india
+  [MATCH] Covered Entity Scope: Organization provides ICT, Cloud Infrastructure, and Digital Technology solutions subject to Section 70B(6) of IT Act, 2000.
+UNMET CRITERIA (0):
+MISSING INFO (0):
+ORGANIZATION EVIDENCE REFS: [{'type': 'CONFIRMED_ACTIVITY', 'value': 'AI & Video Analytics Solutions', 'source': 'EnterpriseProfile.business_activities'}]
+REGULATORY EVIDENCE REFS: [{'regulation_id': 'reg-cyber-2026', 'title': 'CERT-In Directions under Section 70B(6) of Information Technology Act, 2000', 'authority': 'Indian Computer Emergency Response Team (CERT-In & MeitY)', 'statutory_region': 'India & Global', 'statutory_sector': 'Technology & Cloud Security', 'source_url': 'https://pib.gov.in/PressReleasePage.aspx?PRID=1820904', 'effective_date': '2022-06-27'}]
+REGULATORY SIGNAL REFS: []
+RATIONALE:
+Regulation is determined **APPLICABLE** based on satisfied statutory criteria:
+- **Territorial Jurisdiction**: Regulation has global territorial scope (India & Global). Organization operates in: india
+- **Covered Entity Scope**: Organization provides ICT, Cloud Infrastructure, and Digital Technology solutions subject to Section 70B(6) of IT Act, 2000.
+
+================================================================================
+REGULATION: HIPAA Security Standards for Protection of Electronic Protected Health Information (45 CFR Part 164)
+AUTHORITY: U.S. Dept of Health & Human Services (HHS / eCFR)
+STATUS: NOT_APPLICABLE
+SCORE: 0.0
+MATCHED CRITERIA (1):
+  [MATCH] Territorial Jurisdiction: Regulation has global territorial scope (Global / US). Organization operates in: india
+UNMET CRITERIA (1):
+  [NO_MATCH] Covered Entity & PHI Handling Scope: Organization does not operate as a covered healthcare entity or process electronic Protected Health Information (ePHI) under 45 CFR Part 164.
+MISSING INFO (0):
+ORGANIZATION EVIDENCE REFS: []
+REGULATORY EVIDENCE REFS: [{'regulation_id': 'reg-hipaa-2026', 'title': 'HIPAA Security Standards for Protection of Electronic Protected Health Information (45 CFR Part 164)', 'authority': 'U.S. Dept of Health & Human Services (HHS / eCFR)', 'statutory_region': 'Global / US', 'statutory_sector': 'Healthcare & Life Sciences', 'source_url': 'https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164', 'effective_date': '2026-06-15'}]
+REGULATORY SIGNAL REFS: []
+RATIONALE:
+Regulation is determined **NOT APPLICABLE** to NEC India based on authoritative scope exclusions:
+- **Covered Entity & PHI Handling Scope**: Organization does not operate as a covered healthcare entity or process electronic Protected Health Information (ePHI) under 45 CFR Part 164.
+
+================================================================================
+REGULATION: SEC Release No. 33-11216: Cybersecurity Risk Management & Algorithmic Trading Disclosure
+AUTHORITY: U.S. Securities and Exchange Commission (SEC / FINRA)
+STATUS: NOT_APPLICABLE
+SCORE: 0.0
+MATCHED CRITERIA (0):
+UNMET CRITERIA (2):
+  [NO_MATCH] Territorial Jurisdiction: Organization is not established in and has no confirmed operations in the United States (United States).
+  [NO_MATCH] SEC Regulated Broker-Dealer Scope: Organization is not a registered broker-dealer or securities trading participant subject to SEC / FINRA reporting.
+MISSING INFO (0):
+ORGANIZATION EVIDENCE REFS: []
+REGULATORY EVIDENCE REFS: [{'regulation_id': 'reg-sec-trading-2026', 'title': 'SEC Release No. 33-11216: Cybersecurity Risk Management & Algorithmic Trading Disclosure', 'authority': 'U.S. Securities and Exchange Commission (SEC / FINRA)', 'statutory_region': 'United States', 'statutory_sector': 'Capital Markets & Securities', 'source_url': 'https://www.finra.org/rules-guidance/rulebooks/finra-rules', 'effective_date': '2026-05-10'}]
+REGULATORY SIGNAL REFS: []
+RATIONALE:
+Regulation is determined **NOT APPLICABLE** to NEC India based on authoritative scope exclusions:
+- **Territorial Jurisdiction**: Organization is not established in and has no confirmed operations in the United States (United States).
+- **SEC Regulated Broker-Dealer Scope**: Organization is not a registered broker-dealer or securities trading participant subject to SEC / FINRA reporting.
+
+================================================================================
+REGULATION: Master Direction ΓÇô Know Your Customer (KYC) Direction, 2016 (Updated as on July 15, 2026)
+AUTHORITY: Reserve Bank of India (RBI)
+STATUS: NOT_APPLICABLE
+SCORE: 0.0
+MATCHED CRITERIA (1):
+  [MATCH] Territorial Jurisdiction: Confirmed organization operating presence in India (India).
+UNMET CRITERIA (1):
+  [NO_MATCH] RBI Regulated Entity Status: Organization is not an RBI-licensed commercial bank or payment aggregator.
+MISSING INFO (0):
+ORGANIZATION EVIDENCE REFS: [{'type': 'CONFIRMED_LOCATION', 'value': 'India', 'source': 'EnterpriseProfile.country'}]
+REGULATORY EVIDENCE REFS: [{'regulation_id': 'reg-rbi-kyc-2026', 'title': 'Master Direction ΓÇô Know Your Customer (KYC) Direction, 2016 (Updated as on July 15, 2026)', 'authority': 'Reserve Bank of India (RBI)', 'statutory_region': 'India', 'statutory_sector': 'Banking & Financial Services', 'source_url': 'https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=12093', 'effective_date': '2026-07-15'}]
+REGULATORY SIGNAL REFS: []
+RATIONALE:
+Regulation is determined **NOT APPLICABLE** to NEC India based on authoritative scope exclusions:
+- **RBI Regulated Entity Status**: Organization is not an RBI-licensed commercial bank or payment aggregator.
+
+================================================================================
+REGULATION: [FLAGGED SCAN] Special Rupee Vostro Accounts (SRVAs)
+AUTHORITY: Reserve Bank of India (RBI)
+STATUS: REQUIRES_REVIEW
+SCORE: 0.65
+MATCHED CRITERIA (1):
+  [MATCH] Territorial Jurisdiction: Confirmed organization operating presence in India (India).
+UNMET CRITERIA (0):
+MISSING INFO (1):
+  [MISSING] Authoritative statutory applicability rules for '[FLAGGED SCAN] Special Rupee Vostro Accounts (SRVAs)' are not sufficiently available in the repository to make a conclusive determination.
+ORGANIZATION EVIDENCE REFS: [{'type': 'CONFIRMED_LOCATION', 'value': 'India', 'source': 'EnterpriseProfile.country'}]
+REGULATORY EVIDENCE REFS: [{'regulation_id': 'reg-scan-rbi-2026', 'title': '[FLAGGED SCAN] Special Rupee Vostro Accounts (SRVAs)', 'authority': 'Reserve Bank of India (RBI)', 'statutory_region': 'India', 'statutory_sector': 'Banking & Financial Services', 'source_url': 'https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=13581&Mode=0', 'effective_date': '2026-07-17'}]
+REGULATORY SIGNAL REFS: []
+RATIONALE:
+Regulatory applicability **REQUIRES REVIEW** for NEC India.
+
+**Matched Context:**
+- Territorial Jurisdiction: Confirmed organization operating presence in India (India).
+
+**Items Requiring Review:**
+- Authoritative statutory applicability rules for '[FLAGGED SCAN] Special Rupee Vostro Accounts (SRVAs)' are not sufficiently available in the repository to make a conclusive determination.
+
+================================================================================
+REGULATION: Half-yearly Publications
+AUTHORITY: Reserve Bank of India (RBI)
+STATUS: REQUIRES_REVIEW
+SCORE: 0.65
+MATCHED CRITERIA (1):
+  [MATCH] Territorial Jurisdiction: Confirmed organization operating presence in India (India).
+UNMET CRITERIA (0):
+MISSING INFO (1):
+  [MISSING] Authoritative statutory applicability rules for 'Half-yearly Publications' are not sufficiently available in the repository to make a conclusive determination.
+ORGANIZATION EVIDENCE REFS: [{'type': 'CONFIRMED_LOCATION', 'value': 'India', 'source': 'EnterpriseProfile.country'}]
+REGULATORY EVIDENCE REFS: [{'regulation_id': 'reg-live-f48830a4', 'title': 'Half-yearly Publications', 'authority': 'Reserve Bank of India (RBI)', 'statutory_region': 'Asia-Pacific / India', 'statutory_sector': 'Banking & Financial Services', 'source_url': 'https://www.rbi.org.in/scripts/AboutUsDisplay.aspx?pg=AllPublications.htm#HP', 'effective_date': '2026-10-02'}]
+REGULATORY SIGNAL REFS: []
+RATIONALE:
+Regulatory applicability **REQUIRES REVIEW** for NEC India.
+
+**Matched Context:**
+- Territorial Jurisdiction: Confirmed organization operating presence in India (India).
+
+**Items Requiring Review:**
+- Authoritative statutory applicability rules for 'Half-yearly Publications' are not sufficiently available in the repository to make a conclusive determination.
+
+================================================================================
+REGULATION: Quarterly Publications
+AUTHORITY: Reserve Bank of India (RBI)
+STATUS: REQUIRES_REVIEW
+SCORE: 0.65
+MATCHED CRITERIA (1):
+  [MATCH] Territorial Jurisdiction: Confirmed organization operating presence in India (India).
+UNMET CRITERIA (0):
+MISSING INFO (1):
+  [MISSING] Authoritative statutory applicability rules for 'Quarterly Publications' are not sufficiently available in the repository to make a conclusive determination.
+ORGANIZATION EVIDENCE REFS: [{'type': 'CONFIRMED_LOCATION', 'value': 'India', 'source': 'EnterpriseProfile.country'}]
+REGULATORY EVIDENCE REFS: [{'regulation_id': 'reg-live-f6887756', 'title': 'Quarterly Publications', 'authority': 'Reserve Bank of India (RBI)', 'statutory_region': 'Asia-Pacific / India', 'statutory_sector': 'Banking & Financial Services', 'source_url': 'https://www.rbi.org.in/scripts/AboutUsDisplay.aspx?pg=AllPublications.htm#QP', 'effective_date': '2026-10-02'}]
+REGULATORY SIGNAL REFS: []
+RATIONALE:
+Regulatory applicability **REQUIRES REVIEW** for NEC India.
+
+**Matched Context:**
+- Territorial Jurisdiction: Confirmed organization operating presence in India (India).
+
+**Items Requiring Review:**
+- Authoritative statutory applicability rules for 'Quarterly Publications' are not sufficiently available in the repository to make a conclusive determination.
+
+================================================================================
+REGULATION: Log In to other FINRA systems
+AUTHORITY: U.S. Securities and Exchange Commission (SEC / FINRA)
+STATUS: NOT_APPLICABLE
+SCORE: 0.0
+MATCHED CRITERIA (0):
+UNMET CRITERIA (2):
+  [NO_MATCH] Territorial Jurisdiction: Organization is not established in and has no confirmed operations in the United States (North America / US).
+  [NO_MATCH] Jurisdiction & Statutory Scope: Statutory scope (North America / US) does not match organization operations.
+MISSING INFO (0):
+ORGANIZATION EVIDENCE REFS: []
+REGULATORY EVIDENCE REFS: [{'regulation_id': 'reg-live-64e89068', 'title': 'Log In to other FINRA systems', 'authority': 'U.S. Securities and Exchange Commission (SEC / FINRA)', 'statutory_region': 'North America / US', 'statutory_sector': 'Capital Markets & Securities', 'source_url': 'https://www.finra.org/rules-guidance/rulebooks/finra-rules', 'effective_date': '2026-10-02'}]
+REGULATORY SIGNAL REFS: []
+RATIONALE:
+Regulation is determined **NOT APPLICABLE** to NEC India based on authoritative scope exclusions:
+- **Territorial Jurisdiction**: Organization is not established in and has no confirmed operations in the United States (North America / US).
+- **Jurisdiction & Statutory Scope**: Statutory scope (North America / US) does not match organization operations.
+
+================================================================================
+REGULATION: Interpreting the Rules
+AUTHORITY: U.S. Securities and Exchange Commission (SEC / FINRA)
+STATUS: NOT_APPLICABLE
+SCORE: 0.0
+MATCHED CRITERIA (0):
+UNMET CRITERIA (2):
+  [NO_MATCH] Territorial Jurisdiction: Organization is not established in and has no confirmed operations in the United States (North America / US).
+  [NO_MATCH] Jurisdiction & Statutory Scope: Statutory scope (North America / US) does not match organization operations.
+MISSING INFO (0):
+ORGANIZATION EVIDENCE REFS: []
+REGULATORY EVIDENCE REFS: [{'regulation_id': 'reg-live-4f15de97', 'title': 'Interpreting the Rules', 'authority': 'U.S. Securities and Exchange Commission (SEC / FINRA)', 'statutory_region': 'North America / US', 'statutory_sector': 'Capital Markets & Securities', 'source_url': 'https://www.finra.org/rules-guidance/rulebooks/finra-rules', 'effective_date': '2026-10-02'}]
+REGULATORY SIGNAL REFS: []
+RATIONALE:
+Regulation is determined **NOT APPLICABLE** to NEC India based on authoritative scope exclusions:
+- **Territorial Jurisdiction**: Organization is not established in and has no confirmed operations in the United States (North America / US).
+- **Jurisdiction & Statutory Scope**: Statutory scope (North America / US) does not match organization operations.
+
+================================================================================
+REGULATION: FederalRegister.gov API
+AUTHORITY: Health & Human Services (HHS / Cornell LII)
+STATUS: REQUIRES_REVIEW
+SCORE: 0.65
+MATCHED CRITERIA (1):
+  [MATCH] Territorial Jurisdiction: Regulation has global territorial scope (Global / US). Organization operates in: india
+UNMET CRITERIA (0):
+MISSING INFO (1):
+  [MISSING] Authoritative statutory applicability rules for 'FederalRegister.gov API' are not sufficiently available in the repository to make a conclusive determination.
+ORGANIZATION EVIDENCE REFS: []
+REGULATORY EVIDENCE REFS: [{'regulation_id': 'reg-live-9d0c8130', 'title': 'FederalRegister.gov API', 'authority': 'Health & Human Services (HHS / Cornell LII)', 'statutory_region': 'Global / US', 'statutory_sector': 'Healthcare & Life Sciences', 'source_url': 'https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164', 'effective_date': '2026-10-02'}]
+REGULATORY SIGNAL REFS: []
+RATIONALE:
+Regulatory applicability **REQUIRES REVIEW** for NEC India.
+
+**Matched Context:**
+- Territorial Jurisdiction: Regulation has global territorial scope (Global / US). Organization operates in: india
+
+**Items Requiring Review:**
+- Authoritative statutory applicability rules for 'FederalRegister.gov API' are not sufficiently available in the repository to make a conclusive determination.
+

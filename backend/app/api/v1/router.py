@@ -11,12 +11,14 @@ from app.api.v1.endpoints import (
     enterprise,
     auth,
     notifications,
-    evals
+    evals,
+    discovery
 )
 
 api_router = APIRouter()
 
 api_router.include_router(auth.router, prefix="/auth", tags=["Authentication & Access Control"])
+api_router.include_router(discovery.router, prefix="/discovery", tags=["Organization Discovery"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["Notifications & Alerts"])
 api_router.include_router(sources.router, prefix="/sources", tags=["Regulatory Sources"])
 api_router.include_router(regulations.router, prefix="/regulations", tags=["Document Repository"])

@@ -66,8 +66,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onSuccess, onClo
           </h2>
           <p className="text-xs text-slate-400">
             {isRegistering 
-              ? 'Register to access your Regulatory Intelligence & Compliance Workspace'
-              : 'Sign in to access your Regulatory Intelligence & Compliance Workspace'}
+              ? 'Register to access your Regulatory Intelligence & Compliance Overview'
+              : 'Sign in to access your Regulatory Intelligence & Compliance Overview'}
           </p>
         </div>
 

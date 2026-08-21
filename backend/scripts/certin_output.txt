@@ -1,0 +1,58 @@
+﻿python : SECURITY WARNING: Using default insecure SECRET_KEY. Set SECRET_KEY in .env for production!
+At line:1 char:1
++ python scripts/inspect_certin.py 2>&1 | Out-File -Encoding utf8 scrip ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (SECURITY WARNIN...for production!:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+=== REG-CYBER-2026 CONTENT TEXT ===
+Ministry of Electronics & IT
+CERT-In issues directions relating to information security practices, procedure, prevention, response and reporting of cyber incidents for Safe & Trusted Internet
+αñ¬αÑìαñ░αñ╡αñ┐αñ╖αÑìαñƒαñ┐ αññαñ┐αñÑαñ┐:
+ 28 APR 2022 2:14PM by PIB Delhi
+The Indian Computer Emergency Response Team (CERT-In) serves as the national agency for performing various functions in the area of cyber security in the country as per provisions of section 70B of
+the
+Information Technology Act, 2000. CERT-In continuously analyses cyber threats and handles cyber incidents tracked and reported to it. CERT-In regularly issues advisories to organisations and users to enable them to protect their data/information and ICT infrastructure. In order to coordinate response activities as well as emergency measures with respect to cyber security incidents, CERT-In calls for information from service providers, intermediaries, data centres and body corporate.
+During the course of handling cyber incidents and interactions with the constituency, CERT-In has identified certain gaps causing hindrance in incident analysis. To address the identified gaps and issues so as to facilitate incident response measures, CERT-In has issued directions relating to information security practices, procedure, prevention, response and reporting of cyber incidents under the provisions of sub-section (6) of section 70B of the Information Technology Act, 2000. These directions will become effective after 60 days.
+The directions cover aspects relating to synchronization of ICT system clocks; mandatory reporting of cyber incidents to CERT-In; maintenance of logs of ICT systems; subscriber/customer registrations details by Data centers, Virtual Private Server (VPS) providers, VPN Service providers, Cloud service providers; KYC norms and practices by virtual asset service providers, virtual asset exchange providers and custodian wallet providers. These directions shall enhance overall cyber security posture and ensure safe & trusted Internet in the country.
+The directions issued by CERT-In are available at
+https://www.cert-in.org.in/Directions70B.jsp
+*******
+RKJ/M
+(αñ░αñ┐αñ▓αÑÇαñ£αñ╝ αñåαñêαñíαÑÇ: 1820904)
+αñåαñùαñéαññαÑüαñò αñ¬αñƒαñ▓ : 27557
+αñçαñ╕ αñ╡αñ┐αñ£αÑìαñ₧αñ¬αÑìαññαñ┐ αñòαÑï αñçαñ¿ αñ¡αñ╛αñ╖αñ╛αñôαñé αñ«αÑçαñé αñ¬αÑ¥αÑçαñé:
+Urdu
+,
+Gujarati
+,
+αñ╣αñ┐αñ¿αÑìαñªαÑÇ
+,
+Tamil
+,
+Malayalam
+Ministry of Electronics & IT
+CERT-In issues directions relating to information security practices, procedure, prevention, response and reporting of cyber incidents for Safe & Trusted Internet
+αñ¬αÑìαñ░αñ╡αñ┐αñ╖αÑìαñƒαñ┐ αññαñ┐αñÑαñ┐:
+ 28 APR 2022 2:14PM by PIB Delhi
+The Indian Computer Emergency Response Team (CERT-In) serves as the national agency for performing various functions in the area of cyber security in the country as per provisions of section 70B of
+the
+Information Technology Act, 2000. CERT-In continuously analyses cyber threats and handles cyber incidents tracked and reported to it. CERT-In regularly issues advisories to organisations and users to enable them to protect their data/information and ICT infrastructure. In order to coordinate response activities as well as emergency measures with respect to cyber security incidents, CERT-In calls for information from service providers, intermediaries, data centres and body corporate.
+During the course of handling cyber incidents and interactions with the constituency, CERT-In has identified certain gaps causing hindrance in incident analysis. To address the identified gaps and issues so as to facilitate incident response measures, CERT-In has issued directions relating to information security practices, procedure, prevention, response and reporting of cyber incidents under the provisions of sub-section (6) of section 70B of the Information Technology Act, 2000. These directions will become effective after 60 days.
+The directions cover aspects relating to synchronization of ICT system clocks; mandatory reporting of cyber incidents to CERT-In; maintenance of logs of ICT systems; subscriber/customer registrations details by Data centers, Virtual Private Server (VPS) providers, VPN Service providers, Cloud service providers; KYC norms and practices by virtual asset service providers, virtual asset exchange providers and custodian wallet providers. These directions shall enhance overall cyber security posture and ensure safe & trusted Internet in the country.
+The directions issued by CERT-In are available at
+https://www.cert-in.org.in/Directions70B.jsp
+*******
+RKJ/M
+(αñ░αñ┐αñ▓αÑÇαñ£αñ╝ αñåαñêαñíαÑÇ: 1820904)
+
+=== SECTIONS & REQUIREMENTS ===
+Section: Section 1 - Ministry of Electronics & IT
+  Obligation: Statutory directive provisions for CERT-In Directions under Section 70B(6) of Information Technology Act, 2000
+    Requirement: Ministry of Electronics & IT
+CERT-In issues directions relating to information security practices, procedure, prevention, response and reporting of cyber incidents for Safe & Trusted Internet
+αñ¬αÑìαñ░αñ╡αñ┐αñ╖αÑìαñƒαñ┐ αññαñ┐αñÑαñ┐:
+ 28 APR 2022 2:14PM by PIB Delhi
+The Indian Computer Emergency Response Team (CERT-In) serve | Citation: Indian Computer Emergency Response Team (CERT-In & MeitY) | Span: Ministry of Electronics & IT
+CERT-In issues directions relating to information security practices, procedure, prevention, response and reporting of cyber incidents for Safe & Trusted Internet
+αñ¬αÑìαñ░αñ╡αñ┐αñ╖αÑìαñƒ

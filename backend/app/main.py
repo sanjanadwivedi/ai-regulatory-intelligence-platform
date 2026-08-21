@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 
 from app.core.database import Base, engine, SessionLocal
-import app.models.domain  # noqa: F401 — ensure all ORM models register with Base before create_all
+import app.models.domain  # noqa: F401 â€” ensure all ORM models register with Base before create_all
 from seed_data import seed_database_data
 
 from app.api.v1.api import api_router
@@ -44,6 +44,8 @@ METRICS = {
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Initializing database schemas...")
+    from scripts.migrate_discovery_run import migrate_db
+    migrate_db()
     Base.metadata.create_all(bind=engine)
     logger.info("Seeding initial regulatory data...")
     seed_database_data()
@@ -90,6 +92,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        settings.FRONTEND_URL
+    ] if settings.ENVIRONMENT == "production" else [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:5173",
@@ -100,6 +104,14 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Trace-ID"],
 )
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 
 # Request Correlation & Trace Middleware
@@ -150,6 +162,17 @@ def health_check():
         }
     }
 
+@app.get("/health/ready", tags=["Observability"])
+def readiness_check():
+    try:
+        from sqlalchemy import text
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        return {"status": "READY"}
+    except Exception as e:
+        return JSONResponse(status_code=503, content={"status": "NOT_READY", "detail": "Database unavailable"})
+
 # Prometheus Metrics Exporter Endpoint
 @app.get("/metrics", tags=["Observability"])
 def prometheus_metrics():
@@ -171,3 +194,5 @@ def prometheus_metrics():
     return Response(content=metrics_text, media_type="text/plain")
 
 app.include_router(api_router, prefix="/api/v1")
+
+

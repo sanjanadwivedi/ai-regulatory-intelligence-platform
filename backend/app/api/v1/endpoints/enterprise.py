@@ -4,7 +4,7 @@ import datetime
 from pydantic import BaseModel
 from typing import List, Optional
 from app.core.database import get_db
-from app.core.security import get_current_user, require_roles
+from app.core.security import get_current_user, get_current_organization, require_roles
 from app.models.domain import EnterpriseProfile
 
 router = APIRouter()
@@ -15,6 +15,12 @@ class EnterpriseProfileIn(BaseModel):
     departments: Optional[List[str]] = []
     country: Optional[str] = None
     regulator_region: Optional[str] = None
+    website_url: Optional[str] = None
+    business_activities: Optional[List[str]] = []
+    products_services: Optional[List[str]] = []
+    licenses: Optional[List[str]] = []
+    locations: Optional[List[str]] = []
+    discovery_status: Optional[str] = "UNINITIALIZED"
 
 class EnterpriseProfileOut(BaseModel):
     id: str
@@ -23,6 +29,13 @@ class EnterpriseProfileOut(BaseModel):
     departments: Optional[List[str]] = []
     country: Optional[str] = None
     regulator_region: Optional[str] = None
+    website_url: Optional[str] = None
+    business_activities: Optional[List[str]] = []
+    products_services: Optional[List[str]] = []
+    licenses: Optional[List[str]] = []
+    locations: Optional[List[str]] = []
+    discovery_status: Optional[str] = "UNINITIALIZED"
+    last_discovered_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
 
     class Config:
@@ -31,28 +44,39 @@ class EnterpriseProfileOut(BaseModel):
 @router.get("/profile", response_model=EnterpriseProfileOut)
 def get_profile(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    current_profile: EnterpriseProfile = Depends(get_current_organization)
 ):
-    profile = db.query(EnterpriseProfile).first()
-    if not profile:
-        raise HTTPException(status_code=404, detail="No enterprise profile configured yet")
+    profile = current_profile
     return profile
 
 @router.post("/profile", response_model=EnterpriseProfileOut)
 def save_profile(
     profile_in: EnterpriseProfileIn,
     db: Session = Depends(get_db),
-    current_user = Depends(require_roles(["ADMIN", "COMPLIANCE_OFFICER"]))
+    current_user = Depends(require_roles(["ADMIN", "COMPLIANCE_OFFICER"])),
+    current_profile: EnterpriseProfile = Depends(get_current_organization)
 ):
-
     """Upsert enterprise profile — creates if none exists, updates if one does."""
-    profile = db.query(EnterpriseProfile).first()
+    profile = current_profile
     if profile:
         profile.organization_name = profile_in.organization_name
         profile.industry_sector = profile_in.industry_sector
         profile.departments = profile_in.departments
         profile.country = profile_in.country
         profile.regulator_region = profile_in.regulator_region
+        if profile_in.website_url:
+            profile.website_url = profile_in.website_url
+        if profile_in.business_activities:
+            profile.business_activities = profile_in.business_activities
+        if profile_in.products_services:
+            profile.products_services = profile_in.products_services
+        if profile_in.licenses:
+            profile.licenses = profile_in.licenses
+        if profile_in.locations:
+            profile.locations = profile_in.locations
+        if profile_in.discovery_status:
+            profile.discovery_status = profile_in.discovery_status
         profile.updated_at = datetime.datetime.utcnow()
     else:
         profile = EnterpriseProfile(**profile_in.model_dump())

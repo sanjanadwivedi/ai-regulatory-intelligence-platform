@@ -53,8 +53,8 @@ export const KnowledgeGraphCanvas: React.FC<KnowledgeGraphCanvasProps> = ({
   regulationId,
   onNodeClick,
 }) => {
-  const [graphNodes, setGraphNodes] = React.useState<GraphNode[]>(initialNodes || DEFAULT_NODES);
-  const [graphEdges, setGraphEdges] = React.useState<GraphEdge[]>(initialEdges || DEFAULT_EDGES);
+  const [graphNodes, setGraphNodes] = React.useState<GraphNode[]>(initialNodes || []);
+  const [graphEdges, setGraphEdges] = React.useState<GraphEdge[]>(initialEdges || []);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>('ALL');
   const [loading, setLoading] = useState<boolean>(false);
@@ -68,19 +68,24 @@ export const KnowledgeGraphCanvas: React.FC<KnowledgeGraphCanvasProps> = ({
           setGraphNodes(data.nodes);
           setGraphEdges(data.edges || []);
           setSelectedNode(data.nodes[0]);
-        } else if (initialNodes) {
+        } else if (initialNodes && initialNodes.length > 0) {
           setGraphNodes(initialNodes);
           setGraphEdges(initialEdges || []);
           setSelectedNode(initialNodes[0]);
+        } else {
+          setGraphNodes([]);
+          setGraphEdges([]);
+          setSelectedNode(null);
         }
       } catch {
-        // Keep current nodes
+        setGraphNodes(initialNodes || []);
+        setGraphEdges(initialEdges || []);
       } finally {
         setLoading(false);
       }
     };
     fetchGraph();
-  }, [regulationId]);
+  }, [regulationId, initialNodes]);
 
   const nodes = graphNodes;
   const edges = graphEdges;
@@ -132,50 +137,57 @@ export const KnowledgeGraphCanvas: React.FC<KnowledgeGraphCanvasProps> = ({
           </div>
 
           <div className="flex flex-col space-y-3 py-2">
-            {filteredNodes.map((node, i) => {
-              const edge = edges.find(e => e.source === node.id);
-              const isSelected = selectedNode?.id === node.id;
+            {filteredNodes.length > 0 ? (
+              filteredNodes.map((node, i) => {
+                const edge = edges.find(e => e.source === node.id);
+                const isSelected = selectedNode?.id === node.id;
 
-              return (
-                <div key={node.id} className="flex flex-col items-center">
-                  <div
-                    onClick={() => {
-                      setSelectedNode(node);
-                      if (onNodeClick) onNodeClick(node);
-                    }}
-                    className={`w-full p-4 rounded-xl border-2 transition-all cursor-pointer shadow-lg flex items-center justify-between ${node.color} ${
-                      isSelected ? 'ring-2 ring-brand-400 scale-[1.01]' : 'hover:border-slate-600'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <span className="w-6 h-6 rounded-full bg-slate-900/80 font-mono text-[10px] font-bold flex items-center justify-center text-slate-300 border border-slate-700">
-                        0{i + 1}
-                      </span>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-[10px] uppercase font-extrabold tracking-wider opacity-80">{node.category}</span>
-                          <span className="text-slate-500">•</span>
-                          <span className="text-[10px] font-mono opacity-80">{node.type}</span>
+                return (
+                  <div key={node.id} className="flex flex-col items-center">
+                    <div
+                      onClick={() => {
+                        setSelectedNode(node);
+                        if (onNodeClick) onNodeClick(node);
+                      }}
+                      className={`w-full p-4 rounded-xl border-2 transition-all cursor-pointer shadow-lg flex items-center justify-between ${node.color} ${
+                        isSelected ? 'ring-2 ring-brand-400 scale-[1.01]' : 'hover:border-slate-600'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <span className="w-6 h-6 rounded-full bg-slate-900/80 font-mono text-[10px] font-bold flex items-center justify-center text-slate-300 border border-slate-700">
+                          0{i + 1}
+                        </span>
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-[10px] uppercase font-extrabold tracking-wider opacity-80">{node.category}</span>
+                            <span className="text-slate-500">•</span>
+                            <span className="text-[10px] font-mono opacity-80">{node.type}</span>
+                          </div>
+                          <h4 className="text-xs font-bold text-white mt-0.5">{node.label}</h4>
                         </div>
-                        <h4 className="text-xs font-bold text-white mt-0.5">{node.label}</h4>
                       </div>
+
+                      <ChevronRight className={`w-4 h-4 transition-transform ${isSelected ? 'rotate-90 text-brand-300' : 'text-slate-500'}`} />
                     </div>
 
-                    <ChevronRight className={`w-4 h-4 transition-transform ${isSelected ? 'rotate-90 text-brand-300' : 'text-slate-500'}`} />
+                    {edge && i < filteredNodes.length - 1 && (
+                      <div className="flex flex-col items-center py-1.5">
+                        <div className="w-0.5 h-3 bg-brand-500/50" />
+                        <span className="text-[9px] font-mono uppercase bg-slate-900 px-2 py-0.5 rounded text-brand-300 border border-slate-800 my-0.5">
+                          {edge.label}
+                        </span>
+                        <div className="w-0.5 h-3 bg-brand-500/50" />
+                      </div>
+                    )}
                   </div>
-
-                  {edge && i < filteredNodes.length - 1 && (
-                    <div className="flex flex-col items-center py-1.5">
-                      <div className="w-0.5 h-3 bg-brand-500/50" />
-                      <span className="text-[9px] font-mono uppercase bg-slate-900 px-2 py-0.5 rounded text-brand-300 border border-slate-800 my-0.5">
-                        {edge.label}
-                      </span>
-                      <div className="w-0.5 h-3 bg-brand-500/50" />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div className="p-12 text-center text-slate-500 text-xs font-medium space-y-1">
+                <p className="font-semibold text-slate-300">No ontology graph chains available for this directive.</p>
+                <p className="text-[11px] text-slate-500">Extract regulations to populate the 8-hop relationship flow.</p>
+              </div>
+            )}
           </div>
         </div>
 

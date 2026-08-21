@@ -66,13 +66,13 @@ export const RegulationDeltaAnalyzer: React.FC<RegulationDeltaAnalyzerProps> = (
         <div className="space-y-1">
           <div className="flex items-center space-x-2">
             <GitCompare className="w-5 h-5 text-indigo-400" />
-            <h2 className="text-lg font-bold text-white tracking-tight">Regulation Version & Delta Analyzer</h2>
+            <h2 className="text-lg font-bold text-white tracking-tight">Regulation Version Changes & Diff</h2>
             <span className="px-2 py-0.5 text-xs font-mono bg-indigo-500/20 text-indigo-300 rounded border border-indigo-500/30">
               v1.0 (2024) vs v2.0 (2026)
             </span>
           </div>
           <p className="text-xs text-slate-400">
-            Automated statutory delta comparison highlighting added obligations, modified timelines, and repealed clauses.
+            Automated statutory change comparison highlighting added obligations, modified timelines, and repealed clauses.
           </p>
         </div>
       </div>

@@ -1,10 +1,11 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from app.models.domain import EnterpriseProfile
 import datetime
 import uuid
 from app.core.database import get_db
-from app.core.security import get_current_user, require_roles
+from app.core.security import get_current_user, get_current_organization, require_roles
 from app.models.domain import RegulatorySource, Regulation, Section, Obligation, Requirement, KnowledgeGraphChain, ComplianceTask, AuditLog
 
 from app.schemas.schemas import SourceResponse, SourceCreate
@@ -17,7 +18,8 @@ router = APIRouter()
 @router.get("", response_model=List[SourceResponse])
 def list_sources(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    current_profile: EnterpriseProfile = Depends(get_current_organization)
 ):
     return db.query(RegulatorySource).order_by(RegulatorySource.created_at.desc()).all()
 
@@ -25,7 +27,8 @@ def list_sources(
 def create_source(
     source_in: SourceCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(require_roles(["ADMIN", "COMPLIANCE_OFFICER"]))
+    current_user = Depends(require_roles(["ADMIN", "COMPLIANCE_OFFICER"])),
+    current_profile: EnterpriseProfile = Depends(get_current_organization)
 ):
     source = RegulatorySource(**source_in.model_dump())
     db.add(source)
@@ -37,7 +40,8 @@ def create_source(
 def delete_source(
     source_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(require_roles(["ADMIN", "COMPLIANCE_OFFICER"]))
+    current_user = Depends(require_roles(["ADMIN", "COMPLIANCE_OFFICER"])),
+    current_profile: EnterpriseProfile = Depends(get_current_organization)
 ):
     source = db.query(RegulatorySource).filter(RegulatorySource.id == source_id).first()
     if not source:
@@ -66,7 +70,8 @@ def delete_source(
 def trigger_fetch(
     source_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(require_roles(["ADMIN", "COMPLIANCE_OFFICER"]))
+    current_user = Depends(require_roles(["ADMIN", "COMPLIANCE_OFFICER"])),
+    current_profile: EnterpriseProfile = Depends(get_current_organization)
 ):
     source = db.query(RegulatorySource).filter(RegulatorySource.id == source_id).first()
     if not source:

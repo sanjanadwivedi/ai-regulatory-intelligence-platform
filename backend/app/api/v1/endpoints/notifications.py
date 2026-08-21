@@ -1,9 +1,10 @@
+from app.models.domain import EnterpriseProfile
 from typing import List, Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.services.notification_service import NotificationService
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_current_organization
 from app.models.domain import EnterpriseUser
 
 router = APIRouter()
@@ -12,7 +13,8 @@ class NotificationReadRequest(BaseModel):
     notification_id: str
 
 @router.get("", response_model=List[Any])
-def get_notifications(current_user: EnterpriseUser = Depends(get_current_user)):
+def get_notifications(current_user: EnterpriseUser = Depends(get_current_user),
+    current_profile: EnterpriseProfile = Depends(get_current_organization)):
     """
     Get active notifications for the current authenticated user.
     """
@@ -21,7 +23,8 @@ def get_notifications(current_user: EnterpriseUser = Depends(get_current_user)):
 @router.post("/mark-read")
 def mark_notification_read(
     payload: NotificationReadRequest,
-    current_user: EnterpriseUser = Depends(get_current_user)
+    current_user: EnterpriseUser = Depends(get_current_user),
+    current_profile: EnterpriseProfile = Depends(get_current_organization)
 ):
     """
     Mark a specific notification as read.

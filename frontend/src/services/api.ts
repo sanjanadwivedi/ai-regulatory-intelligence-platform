@@ -7,7 +7,12 @@ import {
   CopilotResponse,
   AuditLog,
   AnalyticsOverview,
-  TaskStatus
+  TaskStatus,
+  CompliancePostureResponse,
+  ComplianceAlert,
+  ComplianceIntelligenceSnapshot,
+  ComplianceDefensePack,
+  ComplianceEvidenceManifest
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -45,7 +50,7 @@ api.interceptors.response.use(
 export { api };
 
 // ---------------------------------------------------------------------------
-// ServiceAPI — all backend integration in one place.
+// ServiceAPI â€” all backend integration in one place.
 // Silent fallbacks are intentional: the platform degrades gracefully when
 // the backend is unreachable (dev mode, first boot, no seed yet).
 // ---------------------------------------------------------------------------
@@ -71,7 +76,7 @@ export const ServiceAPI = {
 
 
   // ---------------------------------------------------------------------------
-  // Regulatory Sources — Bounded Context: Regulatory Intelligence
+  // Regulatory Sources â€” Bounded Context: Regulatory Intelligence
   // ---------------------------------------------------------------------------
   getSources: async (): Promise<RegulatorySource[]> => {
     const res = await api.get('/sources');
@@ -96,7 +101,7 @@ export const ServiceAPI = {
   },
 
   // ---------------------------------------------------------------------------
-  // Regulations — Bounded Context: Regulatory Knowledge
+  // Regulations â€” Bounded Context: Regulatory Knowledge
   // ---------------------------------------------------------------------------
   getRegulations: async (search?: string): Promise<Regulation[]> => {
     const res = await api.get('/regulations', { params: { search } });
@@ -150,7 +155,7 @@ export const ServiceAPI = {
   },
 
   // ---------------------------------------------------------------------------
-  // Compliance Tasks — Bounded Context: Compliance Workflow
+  // Compliance Tasks â€” Bounded Context: Compliance Workflow
   // ---------------------------------------------------------------------------
   getTasks: async (): Promise<ComplianceTask[]> => {
     const res = await api.get('/tasks');
@@ -170,7 +175,7 @@ export const ServiceAPI = {
   },
 
   // ---------------------------------------------------------------------------
-  // AI Copilot — Infrastructure: RAG / LLM
+  // AI Copilot â€” Infrastructure: RAG / LLM
   // ---------------------------------------------------------------------------
   queryCopilot: async (query: string, regulation_id?: string): Promise<CopilotResponse> => {
     const res = await api.post('/copilot/query', { query, regulation_id });
@@ -178,10 +183,53 @@ export const ServiceAPI = {
   },
 
   // ---------------------------------------------------------------------------
-  // Analytics & Audit — Bounded Context: Reporting & Audit
+  // Dashboard Metrics & Reporting
   // ---------------------------------------------------------------------------
   getAnalyticsOverview: async (): Promise<AnalyticsOverview> => {
     const res = await api.get('/analytics/overview');
+    return res.data;
+  },
+
+  // ---------------------------------------------------------------------------
+  // Compliance Intelligence & Defense Pack Layer
+  // ---------------------------------------------------------------------------
+  generateComplianceSnapshot: async (): Promise<ComplianceIntelligenceSnapshot> => {
+    const res = await api.post('/compliance/intelligence/snapshot', {});
+    return res.data;
+  },
+
+  getComplianceSnapshot: async (): Promise<ComplianceIntelligenceSnapshot> => {
+    const res = await api.get('/compliance/intelligence/snapshot');
+    return res.data;
+  },
+
+  getComplianceSnapshotById: async (id: string): Promise<ComplianceIntelligenceSnapshot> => {
+    const res = await api.get(`/compliance/intelligence/snapshot/${id}`);
+    return res.data;
+  },
+
+  generateDefensePack: async (snapshotId: string): Promise<ComplianceDefensePack> => {
+    const res = await api.post('/compliance/defense-pack/generate', { snapshot_id: snapshotId });
+    return res.data;
+  },
+
+  getDefensePacks: async (): Promise<ComplianceDefensePack[]> => {
+    const res = await api.get('/compliance/defense-pack');
+    return res.data;
+  },
+
+  getDefensePack: async (id: string): Promise<ComplianceDefensePack> => {
+    const res = await api.get(`/compliance/defense-pack/${id}`);
+    return res.data;
+  },
+
+  getDefensePackManifest: async (id: string): Promise<ComplianceEvidenceManifest[]> => {
+    const res = await api.get(`/compliance/defense-pack/${id}/manifest`);
+    return res.data;
+  },
+
+  exportDefensePack: async (id: string): Promise<any> => {
+    const res = await api.get(`/compliance/defense-pack/${id}/export`);
     return res.data;
   },
 
@@ -191,7 +239,7 @@ export const ServiceAPI = {
   },
 
   // ---------------------------------------------------------------------------
-  // Notifications — Bounded Context: Notification
+  // Notifications â€” Bounded Context: Notification
   // Requires auth token. Falls back silently to [] if the user is not yet
   // authenticated (the Navbar calls this on mount before login completes).
   // ---------------------------------------------------------------------------
@@ -215,7 +263,7 @@ export const ServiceAPI = {
   },
 
   // ---------------------------------------------------------------------------
-  // Knowledge Graph — Bounded Context: Regulatory Knowledge
+  // Knowledge Graph â€” Bounded Context: Regulatory Knowledge
   // ---------------------------------------------------------------------------
   getKnowledgeGraph: async (regulationId?: string): Promise<any> => {
     const regId = regulationId || '';
@@ -225,7 +273,7 @@ export const ServiceAPI = {
   },
 
   // ---------------------------------------------------------------------------
-  // Enterprise Profile & Users — Bounded Context: Identity & Security
+  // Enterprise Profile & Users â€” Bounded Context: Identity & Security
   // ---------------------------------------------------------------------------
   getEnterpriseProfile: async (): Promise<any> => {
     const res = await api.get('/enterprise/profile');
@@ -238,6 +286,7 @@ export const ServiceAPI = {
     departments: string[];
     country?: string;
     regulator_region?: string;
+    discovery_status?: string;
   }): Promise<any> => {
     const res = await api.post('/enterprise/profile', profileData);
     return res.data;
@@ -263,7 +312,7 @@ export const ServiceAPI = {
   },
 
   // ---------------------------------------------------------------------------
-  // Golden Evaluation Benchmark — Bounded Context: Reporting & Audit
+  // Golden Evaluation Benchmark â€” Bounded Context: Reporting & Audit
   // ---------------------------------------------------------------------------
   getGoldenBenchmark: async (): Promise<any> => {
     // Try the canonical evals endpoint first; fall back to regulations-namespaced alias
@@ -275,4 +324,221 @@ export const ServiceAPI = {
       return res.data;
     }
   },
+
+  // ---------------------------------------------------------------------------
+  // Discovery â€” Organization Discovery Service
+  // ---------------------------------------------------------------------------
+  startDiscovery: async (websiteUrl: string): Promise<any> => {
+    const res = await api.post('/discovery/start', { website_url: websiteUrl });
+    return res.data;
+  },
+  
+  getDiscoveryFacts: async (status?: string, factType?: string): Promise<any[]> => {
+    const params: Record<string, string> = {};
+    if (status) params.status = status;
+    if (factType) params.fact_type = factType;
+    const res = await api.get('/discovery/facts', { params });
+    return res.data;
+  },
+  
+  confirmFact: async (factId: string): Promise<any> => {
+    const res = await api.post(`/discovery/facts/${factId}/confirm`);
+    return res.data;
+  },
+  
+  editFact: async (factId: string, factValue: string): Promise<any> => {
+    const res = await api.put(`/discovery/facts/${factId}/edit`, { fact_value: factValue });
+    return res.data;
+  },
+  
+  rejectFact: async (factId: string): Promise<any> => {
+    const res = await api.post(`/discovery/facts/${factId}/reject`);
+    return res.data;
+  },
+  
+  bulkConfirmFacts: async (minConfidence?: number): Promise<any> => {
+    const res = await api.post('/discovery/facts/bulk-confirm', { min_confidence: minConfidence || 0.85 });
+    return res.data;
+  },
+  
+  finalizeDiscovery: async (): Promise<any> => {
+    const res = await api.post('/discovery/finalize');
+    return res.data;
+  },
+  
+  getDiscoveryStatus: async (): Promise<any> => {
+    const res = await api.get('/discovery/status');
+    return res.data;
+  },
+
+  // --- Regulatory Applicability Engine API ---
+  evaluateApplicability: async (): Promise<any[]> => {
+    const res = await api.post('/regulatory/applicability/evaluate');
+    return res.data;
+  },
+
+  getApplicabilityAssessments: async (params?: { status?: string; regulation_id?: string }): Promise<any[]> => {
+    const res = await api.get('/regulatory/applicability', { params });
+    return res.data;
+  },
+
+  getApplicabilityAssessment: async (assessmentId: string): Promise<any> => {
+    const res = await api.get(`/regulatory/applicability/${assessmentId}`);
+    return res.data;
+  },
+
+  getApplicabilityReviews: async (params?: { status?: string; regulation_id?: string }): Promise<any[]> => {
+    const res = await api.get('/regulatory/applicability/reviews', { params });
+    return res.data;
+  },
+
+  resolveApplicabilityReview: async (reviewId: string, payload: {
+    evidence_fact_value: string;
+    evidence_type: string;
+    evidence_strength: string;
+    source_url: string;
+    snippet?: string;
+    known_state?: string;
+  }): Promise<any> => {
+    const res = await api.post(`/regulatory/applicability/reviews/${reviewId}/resolve`, payload);
+    return res.data;
+  },
+
+  // --- Regulatory Obligation Engine API ---
+  generateObligations: async (): Promise<any[]> => {
+    const res = await api.post('/regulatory/obligations/generate');
+    return res.data;
+  },
+
+  getObligations: async (params?: {
+    regulation_id?: string;
+    status?: string;
+    obligation_type?: string;
+    priority?: string;
+  }): Promise<any[]> => {
+    const res = await api.get('/regulatory/obligations', { params });
+    return res.data;
+  },
+
+  getObligation: async (obligationId: string): Promise<any> => {
+    const res = await api.get(`/regulatory/obligations/${obligationId}`);
+    return res.data;
+  },
+
+  // --- Compliance Tasks & Action Engine API ---
+  getComplianceTasks: async (params?: {
+    status?: string;
+    priority?: string;
+    responsible_function?: string;
+    regulation_id?: string;
+    regulatory_obligation_id?: string;
+  }): Promise<ComplianceTask[]> => {
+    const res = await api.get('/tasks', { params });
+    return res.data;
+  },
+
+  generateComplianceTasks: async (): Promise<ComplianceTask[]> => {
+    const res = await api.post('/tasks/generate');
+    return res.data;
+  },
+
+  updateComplianceTaskStatus: async (taskId: string, status: TaskStatus): Promise<ComplianceTask> => {
+    const res = await api.put(`/tasks/${taskId}`, { status });
+    return res.data;
+  },
+
+  createComplianceTask: async (taskData: any): Promise<ComplianceTask> => {
+    const res = await api.post('/tasks', taskData);
+    return res.data;
+  },
+
+  assignComplianceTask: async (taskId: string, data: { assignee: string; responsible_function?: string; notes?: string }): Promise<ComplianceTask> => {
+    const res = await api.post(`/tasks/${taskId}/assign`, data);
+    return res.data;
+  },
+
+  completeComplianceTask: async (taskId: string, confirmationNotes?: string): Promise<ComplianceTask> => {
+    const res = await api.post(`/tasks/${taskId}/complete`, { confirmation_notes: confirmationNotes });
+    return res.data;
+  },
+
+  reopenComplianceTask: async (taskId: string, reopenReason: string): Promise<ComplianceTask> => {
+    const res = await api.post(`/tasks/${taskId}/reopen`, { reopen_reason: reopenReason });
+    return res.data;
+  },
+
+  uploadComplianceTaskEvidence: async (taskId: string, evidenceData: {
+    evidence_type: string;
+    file_name: string;
+    file_url?: string;
+    description?: string;
+  }): Promise<any> => {
+    const res = await api.post(`/tasks/${taskId}/evidence`, evidenceData);
+    return res.data;
+  },
+
+  getComplianceTaskEvidence: async (taskId: string): Promise<any[]> => {
+    const res = await api.get(`/tasks/${taskId}/evidence`);
+    return res.data;
+  },
+
+  getComplianceTaskActivities: async (taskId: string): Promise<any[]> => {
+    const res = await api.get(`/tasks/${taskId}/activities`);
+    return res.data;
+  },
+
+  addComplianceTaskComment: async (taskId: string, commentText: string): Promise<any> => {
+    const res = await api.post(`/tasks/${taskId}/comments`, { comment_text: commentText });
+    return res.data;
+  },
+
+  // --- Trigger Events API ---
+  recordTriggerEvent: async (eventData: {
+    event_type: string;
+    event_timestamp: string;
+    source: string;
+    description: string;
+    event_metadata?: Record<string, any>;
+  }): Promise<any> => {
+    const res = await api.post('/compliance/events', eventData);
+    return res.data;
+  },
+
+  getTriggerEvents: async (params?: { event_type?: string }): Promise<any[]> => {
+    const res = await api.get('/compliance/events', { params });
+    return res.data;
+  },
+
+  // --- Compliance Monitoring & Intelligence API ---
+  getCompliancePosture: async (): Promise<CompliancePostureResponse> => {
+    const res = await api.get('/compliance/posture');
+    return res.data;
+  },
+
+  getComplianceAlerts: async (params?: {
+    severity?: string;
+    alert_type?: string;
+    status?: string;
+    regulation_id?: string;
+    obligation_id?: string;
+    task_id?: string;
+  }): Promise<ComplianceAlert[]> => {
+    const res = await api.get('/compliance/alerts', { params });
+    return res.data;
+  },
+
+  getComplianceAlert: async (alertId: string): Promise<ComplianceAlert> => {
+    const res = await api.get(`/compliance/alerts/${alertId}`);
+    return res.data;
+  },
+
+
+
+  resolveComplianceAlert: async (alertId: string, resolutionNotes: string): Promise<ComplianceAlert> => {
+    const res = await api.post(`/compliance/alerts/${alertId}/resolve`, { resolution_notes: resolutionNotes });
+    return res.data;
+  },
+
 };
+
+export const apiService = ServiceAPI;

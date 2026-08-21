@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Bot, Send, Sparkles, User, ExternalLink, ShieldCheck, AlertTriangle, CheckCircle2, HelpCircle, X, Globe } from 'lucide-react';
 import { CopilotResponse, GroundedCitation } from '../../types';
 import { ServiceAPI } from '../../services/api';
+import { AegisCopilotCharacter } from './AegisCopilotCharacter';
 
 interface RAGCopilotProps {
   initialQuery?: string;
@@ -23,39 +24,7 @@ export const RAGCopilot: React.FC<RAGCopilotProps> = ({ initialQuery = '' }) => 
   >([
     {
       sender: 'bot',
-      text: 'Hello Sanjana! I am your **Regulatory RAG Copilot**. Ask me any natural language question regarding your compliance corpus, KYC circulars, SEC cybersecurity directives, or internal SOP gap mappings.',
-      citations: [
-        {
-          regulation_id: 'reg-rbi-kyc-2026',
-          regulation_title: 'RBI Master Direction – Know Your Customer (KYC) Direction, 2026',
-          authority: 'Reserve Bank of India (RBI)',
-          section_text: 'Section 4.1(a): Periodic re-verification of High-Risk customers mandated at minimum once every 2 years.',
-          relevance_score: 0.98,
-          page_number: 18,
-          paragraph_number: 4,
-          evidence_star_rating: '★★★★★',
-          highlighted_sentence: 'Regulated entities shall conduct mandatory periodic re-verification of customer KYC records every two (2) years for high-risk accounts.'
-        }
-      ],
-      confidence: 0.96,
-      conflict: {
-        has_conflict: true,
-        statutory_rule: 'RBI Circular specifies mandatory 2-Year re-verification for High-Risk accounts.',
-        internal_policy: 'Internal Retail Banking SOP POL-KYC-2026 specifies 3-Year re-verification cycle.',
-        recommendation: 'Internal SOP policy conflict detected! Policy POL-KYC-2026 requires immediate amendment to 2 Years to align with statutory mandate.'
-      },
-      retrievedContext: { total_retrieved: 7, used: 2, ignored: 5 },
-      whyPayload: {
-        prompt_inputs: 'Query: KYC re-verification timeline | Ingested Corpus: 3 directives',
-        rule_matching: 'Rule #881: Section 4.1(a) high-risk threshold == 24 Months',
-        similar_cases: ['Case #RBI-2024-KYC-Audit', 'Case #SEC-Pre-Trade-Risk-2025'],
-        verification_badge: {
-          official_government_source: true,
-          parsed_successfully: true,
-          human_reviewed: true,
-          no_conflicting_regulations: false
-        }
-      }
+      text: 'Hello! I am your **AI Regulatory Copilot**. Ask me any question regarding your compliance corpus, statutory circulars, reporting deadlines, or internal policy control mappings.',
     }
   ]);
   const [loading, setLoading] = useState(false);
@@ -104,19 +73,21 @@ export const RAGCopilot: React.FC<RAGCopilotProps> = ({ initialQuery = '' }) => 
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-indigo-950/60 via-slate-900 to-slate-900 border border-indigo-500/20 shadow-xl flex items-center justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center space-x-2">
-            <Bot className="w-6 h-6 text-indigo-400" />
-            <h1 className="text-xl font-bold text-white tracking-tight">AI Compliance Copilot (RAG Engine)</h1>
-            <span className="px-2 py-0.5 text-[10px] font-bold bg-indigo-500/20 text-indigo-300 rounded border border-indigo-500/30 flex items-center gap-1">
-              <Sparkles className="w-3 h-3" /> Grounded Search
-            </span>
+      {/* Header with Animated Character */}
+      <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-950 via-indigo-950/40 to-slate-950 border border-brand-500/30 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center space-x-4">
+          <AegisCopilotCharacter size="lg" isThinking={loading} />
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2">
+              <h1 className="text-xl font-bold text-white tracking-tight">Aegis AI Copilot Workspace</h1>
+              <span className="px-2.5 py-0.5 text-[10px] font-bold bg-brand-500/20 text-brand-300 rounded-full border border-brand-500/30 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-cyan-400" /> Grounded Neural RAG
+              </span>
+            </div>
+            <p className="text-xs text-slate-400">
+              Interactive regulatory assistant grounded in your active directives, circulars, and SOP controls.
+            </p>
           </div>
-          <p className="text-xs text-slate-400">
-            Ask natural language questions grounded in indexed regulatory circulars and policy controls.
-          </p>
         </div>
       </div>
 
@@ -143,14 +114,14 @@ export const RAGCopilot: React.FC<RAGCopilotProps> = ({ initialQuery = '' }) => 
               m.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
             }`}
           >
-            <div
-              className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shadow-md ${
-                m.sender === 'user'
-                  ? 'bg-brand-600 text-white'
-                  : 'bg-indigo-600 text-white'
-              }`}
-            >
-              {m.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+            <div className="shrink-0">
+              {m.sender === 'user' ? (
+                <div className="w-8 h-8 rounded-xl bg-brand-600 flex items-center justify-center font-bold text-xs text-white shadow-md">
+                  <User className="w-4 h-4" />
+                </div>
+              ) : (
+                <AegisCopilotCharacter size="sm" isThinking={false} />
+              )}
             </div>
 
             <div

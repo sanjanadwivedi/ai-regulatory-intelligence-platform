@@ -1,0 +1,117 @@
+﻿python : SECURITY WARNING: Using default insecure SECRET_KEY. Set SECRET_KEY in .env for production!
+At line:1 char:1
++ python scripts/validate_live_obligations.py 2>&1 | Out-File -Encoding ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (SECURITY WARNIN...for production!:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+=== 1. EVALUATING APPLICABILITY FOR NEC India ===
+Total Regulations Evaluated: 11
+  - APPLICABLE: 1
+  - NOT_APPLICABLE: 5
+  - REQUIRES_REVIEW: 5
+
+=== 2. GENERATING REGULATORY OBLIGATIONS (IDEMPOTENT RUN 1) ===
+Obligations Generated (Run 1): 4
+  - ACTIVE Obligations: 4
+  - REQUIRES_REVIEW Obligations: 0
+  - SUPERSEDED Obligations: 0
+
+=== 3. GENERATING REGULATORY OBLIGATIONS (IDEMPOTENT RUN 2) ===
+Obligations Generated (Run 2): 4
+Database Active Obligation Count: 4
+>>> IDEMPOTENCY VERIFIED: Exact match, no duplicates created.
+
+=== 4. REGULATION-BY-REGULATION BOUNDARY AUDIT ===
+--------------------------------------------------------------------------------
+Regulation: CERT-In Directions under Section 70B(6) of Information Technology Act, 2000
+  Authority: Indian Computer Emergency Response Team (CERT-In & MeitY)
+  Applicability Status: APPLICABLE
+  Total Obligations: 4 (ACTIVE: 4)
+    * [OBL-CERTIN-INCIDENT-6H] Mandatory Cyber Incident Reporting within 6 Hours
+      Type: REPORTING | Priority: CRITICAL | Freq: UPON_INCIDENT
+      Due Rule: Within 6 hours of incident detection or notice
+      Citation: Direction 2(a) under Section 70B(6) of Information Technology Act, 2000
+      Source URL: https://www.cert-in.org.in/Directions70B.jsp
+    * [OBL-CERTIN-LOGS-180D] Mandatory ICT System Log Retention for 180 Days
+      Type: RECORD_KEEPING | Priority: HIGH | Freq: CONTINUOUS
+      Due Rule: Continuous rolling retention of 180 days within Indian jurisdiction
+      Citation: Direction 4 under Section 70B(6) of Information Technology Act, 2000
+      Source URL: https://www.cert-in.org.in/Directions70B.jsp
+    * [OBL-CERTIN-NTP-SYNC] Mandatory ICT System Clock Synchronization with Standard NTP
+      Type: SECURITY_CONTROL | Priority: MEDIUM | Freq: CONTINUOUS
+      Due Rule: Continuous synchronization with NPL / NIC NTP servers
+      Citation: Direction 1 under Section 70B(6) of Information Technology Act, 2000
+      Source URL: https://www.cert-in.org.in/Directions70B.jsp
+    * [OBL-CERTIN-POC-DESIGNATION] Designation of Point of Contact (PoC) with CERT-In
+      Type: GOVERNANCE | Priority: HIGH | Freq: ONCE_AND_UPON_CHANGE
+      Due Rule: Immediate designation and prompt reporting of any POC changes
+      Citation: Direction 5 under Section 70B(6) of Information Technology Act, 2000
+      Source URL: https://www.cert-in.org.in/Directions70B.jsp
+--------------------------------------------------------------------------------
+Regulation: HIPAA Security Standards for Protection of Electronic Protected Health Information (45 CFR Part 164)
+  Authority: U.S. Dept of Health & Human Services (HHS / eCFR)
+  Applicability Status: NOT_APPLICABLE
+  Total Obligations: 0 (ACTIVE: 0)
+    -> ZERO obligations generated (Correctly excluded)
+--------------------------------------------------------------------------------
+Regulation: SEC Release No. 33-11216: Cybersecurity Risk Management & Algorithmic Trading Disclosure
+  Authority: U.S. Securities and Exchange Commission (SEC / FINRA)
+  Applicability Status: NOT_APPLICABLE
+  Total Obligations: 0 (ACTIVE: 0)
+    -> ZERO obligations generated (Correctly excluded)
+--------------------------------------------------------------------------------
+Regulation: Master Direction ΓÇô Know Your Customer (KYC) Direction, 2016 (Updated as on July 15, 2026)
+  Authority: Reserve Bank of India (RBI)
+  Applicability Status: NOT_APPLICABLE
+  Total Obligations: 0 (ACTIVE: 0)
+    -> ZERO obligations generated (Correctly excluded)
+--------------------------------------------------------------------------------
+Regulation: [FLAGGED SCAN] Special Rupee Vostro Accounts (SRVAs)
+  Authority: Reserve Bank of India (RBI)
+  Applicability Status: REQUIRES_REVIEW
+  Total Obligations: 0 (ACTIVE: 0)
+    -> ZERO ACTIVE obligations generated (Requires human review: ["Authoritative statutory applicability rules for '[FLAGGED SCAN] Special Rupee Vostro Accounts (SRVAs)' are not sufficiently available in the repository to make a conclusive determination."])
+--------------------------------------------------------------------------------
+Regulation: Half-yearly Publications
+  Authority: Reserve Bank of India (RBI)
+  Applicability Status: REQUIRES_REVIEW
+  Total Obligations: 0 (ACTIVE: 0)
+    -> ZERO ACTIVE obligations generated (Requires human review: ["Authoritative statutory applicability rules for 'Half-yearly Publications' are not sufficiently available in the repository to make a conclusive determination."])
+--------------------------------------------------------------------------------
+Regulation: Quarterly Publications
+  Authority: Reserve Bank of India (RBI)
+  Applicability Status: REQUIRES_REVIEW
+  Total Obligations: 0 (ACTIVE: 0)
+    -> ZERO ACTIVE obligations generated (Requires human review: ["Authoritative statutory applicability rules for 'Quarterly Publications' are not sufficiently available in the repository to make a conclusive determination."])
+--------------------------------------------------------------------------------
+Regulation: Log In to other FINRA systems
+  Authority: U.S. Securities and Exchange Commission (SEC / FINRA)
+  Applicability Status: NOT_APPLICABLE
+  Total Obligations: 0 (ACTIVE: 0)
+    -> ZERO obligations generated (Correctly excluded)
+--------------------------------------------------------------------------------
+Regulation: Interpreting the Rules
+  Authority: U.S. Securities and Exchange Commission (SEC / FINRA)
+  Applicability Status: NOT_APPLICABLE
+  Total Obligations: 0 (ACTIVE: 0)
+    -> ZERO obligations generated (Correctly excluded)
+--------------------------------------------------------------------------------
+Regulation: FederalRegister.gov API
+  Authority: Health & Human Services (HHS / Cornell LII)
+  Applicability Status: REQUIRES_REVIEW
+  Total Obligations: 0 (ACTIVE: 0)
+    -> ZERO ACTIVE obligations generated (Requires human review: ["Authoritative statutory applicability rules for 'FederalRegister.gov API' are not sufficiently available in the repository to make a conclusive determination."])
+--------------------------------------------------------------------------------
+Regulation: Generic Cyber Circular
+  Authority: Telecom Authority
+  Applicability Status: REQUIRES_REVIEW
+  Total Obligations: 0 (ACTIVE: 0)
+    -> ZERO ACTIVE obligations generated (Requires human review: ["Authoritative statutory applicability rules for 'Generic Cyber Circular' are not sufficiently available in the repository to make a conclusive determination."])
+
+=== 5. IMMUTABLE AUDIT LOG VERIFICATION ===
+Action: OBLIGATIONS_GENERATED
+User: Compliance Officer (Compliance Officer)
+Target: REGULATORY_OBLIGATION (00b95de5-ca58-4d1b-bdcc-256530ffe7bc)
+Details: {'organization_id': '00b95de5-ca58-4d1b-bdcc-256530ffe7bc', 'organization_name': 'NEC India', 'applicable_regulations_count': 1, 'active_obligations_count': 4, 'requires_review_obligations_count': 0, 'total_generated_count': 4, 'engine_version': 'v1.0.0-deterministic'}
+Timestamp: 2026-08-12 18:05:52.625566

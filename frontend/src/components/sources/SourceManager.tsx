@@ -75,54 +75,28 @@ export const SourceManager: React.FC<SourceManagerProps> = ({
   const handleCrawl = async (id: string) => {
     setCrawlingId(id);
     setCrawlResult(null);
-    setScrapingLogs(['[0.0s] 🛰️ Initiating HTTP Connection to Regulatory Endpoint...']);
-    setScrapingProgress(15);
-
-    // Live progress simulation steps while HTTP call executes
-    const t1 = setTimeout(() => {
-      setScrapingLogs((prev) => [...prev, '[0.8s] 📥 Downloaded statutory payload bytes over TLS (HTTP 200 OK)']);
-      setScrapingProgress(40);
-    }, 600);
-
-    const t2 = setTimeout(() => {
-      setScrapingLogs((prev) => [...prev, '[1.5s] 🛡️ Running Anti-Corruption Layer (ACL) Normalizer & HTML Link Filter...']);
-      setScrapingProgress(65);
-    }, 1200);
-
-    const t3 = setTimeout(() => {
-      setScrapingLogs((prev) => [...prev, '[2.2s] 🔍 Multi-Format Ingestion: OCR Noise Score == 0.02 (98% Confidence Clean Scan)']);
-      setScrapingProgress(85);
-    }, 1800);
+    setScrapingLogs(['🛰️ Connecting to regulatory endpoint...']);
+    setScrapingProgress(30);
 
     try {
+      setScrapingProgress(60);
       const res = await onTriggerCrawl(id);
-      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
       setScrapingProgress(100);
-      setScrapingLogs((prev) => [
-        ...prev,
-        `[2.9s] 🤖 Multi-Agent Pipeline: Successfully Ingested ${res?.items_extracted || 2} new directives into Knowledge Base!`,
-        '✓ Scraping Complete. Verified Official Source Ingestion.'
+      const itemsCount = res?.items_extracted ?? 0;
+      setScrapingLogs([
+        '🛰️ Connected to regulator endpoint.',
+        `📥 Ingested statutory payload (${res?.bytes_scraped ? (res.bytes_scraped / 1024).toFixed(1) + ' KB' : 'complete'}).`,
+        `🤖 Multi-Agent Pipeline: Ingested ${itemsCount} directive(s) into database.`,
+        '✓ Scraping Complete.'
       ]);
       setCrawlResult(res);
-    } catch (err) {
-      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+    } catch (err: any) {
       setScrapingProgress(100);
-      setScrapingLogs((prev) => [
-        ...prev,
-        '[2.9s] 🤖 Multi-Agent Pipeline: Ingested 2 official regulatory circulars into DB!',
-        '✓ Live Ingestion Complete. Source Verified.'
+      const errMsg = err?.message || 'Crawl failed to complete.';
+      setScrapingLogs([
+        '🛰️ Connection attempted.',
+        `❌ Error encountered: ${errMsg}`
       ]);
-      setCrawlResult({
-        authority: 'Regulator Endpoint',
-        http_status: 200,
-        bytes_scraped: 120898,
-        items_extracted: 2,
-        extracted_titles: [
-          'RBI Master Direction – Digital Payment & Cyber Resilience Controls 2026',
-          'RBI Circular on Continuous Risk Reporting & Governance Framework'
-        ],
-        status: 'SUCCESS'
-      });
     } finally {
       setCrawlingId(null);
     }
@@ -570,24 +544,26 @@ export const SourceManager: React.FC<SourceManagerProps> = ({
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1 font-mono">
                 <div className="flex items-center justify-between text-emerald-400">
                   <span>HTTP Status: {crawlResult.http_status || 200} OK</span>
-                  <span>Scraped Bytes: {((crawlResult.bytes_scraped || 120898) / 1024).toFixed(1)} KB</span>
+                  <span>Scraped Bytes: {crawlResult.bytes_scraped ? (crawlResult.bytes_scraped / 1024).toFixed(1) + ' KB' : 'N/A'}</span>
                 </div>
-                <p className="text-slate-400 text-[11px] truncate">Target: {crawlResult.feed_url || 'https://rbi.org.in'}</p>
+                <p className="text-slate-400 text-[11px] truncate">Target: {crawlResult.feed_url || 'Regulator Endpoint'}</p>
               </div>
 
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Live Statutory Titles Extracted from Web Stream:
-                </span>
-                <ul className="space-y-1 bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-slate-200 font-mono text-[11px]">
-                  {(crawlResult.extracted_titles || ['RBI Master Direction Circular 2026', 'SEC Cybersecurity Disclosure Rule']).map((t: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="text-brand-400 font-bold">•</span>
-                      <span>{t}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {crawlResult.extracted_titles && crawlResult.extracted_titles.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Statutory Titles Extracted:
+                  </span>
+                  <ul className="space-y-1 bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-slate-200 font-mono text-[11px]">
+                    {crawlResult.extracted_titles.map((t: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="text-brand-400 font-bold">•</span>
+                        <span>{t}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div className="pt-3 border-t border-slate-800 flex justify-end">

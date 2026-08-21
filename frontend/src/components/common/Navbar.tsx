@@ -166,31 +166,22 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
 
-      {/* Actions */}
       <div className="flex items-center space-x-3">
         {onOpenSetup && (
           <button
             onClick={onOpenSetup}
-            className="flex items-center space-x-1.5 bg-brand-600 text-white hover:bg-brand-500 px-3 py-1.5 rounded-lg font-bold text-xs shadow-lg shadow-brand-600/30 transition-all hover:scale-105"
+            className="btn-primary py-1.5 px-3 text-xs"
           >
-            <span>Enterprise Setup</span>
+            <span>Organization Profile</span>
           </button>
         )}
 
         <button
           onClick={onOpenTour}
-          className="flex items-center space-x-1.5 bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 px-3 py-1.5 rounded-lg border border-brand-500/30 text-xs font-bold transition-all shadow"
+          className="btn-secondary py-1.5 px-3 text-xs"
         >
-          <HelpCircle className="w-4 h-4 text-brand-400" />
+          <HelpCircle className="w-4 h-4 text-slate-400" />
           <span>Guided Tour</span>
-        </button>
-
-        <button
-          onClick={onSearchClick}
-          className="flex items-center space-x-2 bg-slate-900/90 hover:bg-slate-850 text-slate-400 hover:text-slate-200 px-3.5 py-1.5 rounded-lg border border-slate-800 text-xs transition-all w-40 sm:w-56"
-        >
-          <Search className="w-4 h-4 text-brand-400" />
-          <span className="flex-1 text-left">Ask AI Copilot...</span>
         </button>
 
         {/* Notifications */}

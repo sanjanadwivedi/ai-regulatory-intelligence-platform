@@ -1,0 +1,54 @@
+[
+  {
+    "status": "PASS",
+    "message": "Initial evaluation created",
+    "details": {
+      "assessment_id": "575459e6-5472-4585-8309-1a1ffc8de04a",
+      "status": "REQUIRES_REVIEW"
+    }
+  },
+  {
+    "status": "PASS",
+    "message": "Review API data structure valid",
+    "details": {
+      "id": "85b10045-0630-4bcb-bb9e-22b2340a4fa0",
+      "question": "Is condition 'CONTAINS cloud' met for BUSINESS_ACTIVITY?",
+      "required_fact": "BUSINESS_ACTIVITY",
+      "requested_value_type": null
+    }
+  },
+  {
+    "status": "PASS",
+    "message": "Tenant Isolation enforced - 403 PermissionError",
+    "details": {}
+  },
+  {
+    "status": "PASS",
+    "message": "Insufficient/Negative Evidence handled",
+    "details": {
+      "status": "UNDER_REVIEW"
+    }
+  },
+  {
+    "status": "PASS",
+    "message": "Duplicate submission handled. Status: UNDER_REVIEW",
+    "details": {}
+  },
+  {
+    "status": "FAIL",
+    "message": "Historical immutability failed - Assessment was mutated",
+    "details": {}
+  },
+  {
+    "status": "PASS",
+    "message": "Audit Log generated",
+    "details": {
+      "count": 17
+    }
+  },
+  {
+    "status": "PASS",
+    "message": "INFERRED evidence properly kept status as REQUIRES_REVIEW/UNDER_REVIEW",
+    "details": {}
+  }
+]

@@ -1,0 +1,127 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\sanja\AppData\Local\Programs\Python\Python311\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\sanja\AI-Powered Compliance System
+plugins: anyio-4.12.1, timeout-2.4.0
+collecting ... collected 9 items / 8 deselected / 1 selected
+
+backend/tests/test_applicability_engine.py::test_jurisdiction_alone_requires_review_when_mandatory_criteria_missing FAILED [100%]
+
+================================== FAILURES ===================================
+___ test_jurisdiction_alone_requires_review_when_mandatory_criteria_missing ___
+
+db_session = <sqlalchemy.orm.session.Session object at 0x00000247D0214450>
+
+    def test_jurisdiction_alone_requires_review_when_mandatory_criteria_missing(db_session: Session):
+        """
+        REGRESSION TEST 2: Jurisdiction match alone (e.g. India) is NOT sufficient when
+        mandatory covered entity / sector criteria are missing or unspecified.
+        """
+        profile = db_session.query(EnterpriseProfile).first()
+>       profile.country = "India"
+        ^^^^^^^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'country'
+
+backend\tests\test_applicability_engine.py:89: AttributeError
+============================== warnings summary ===============================
+backend\app\core\config.py:24
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\core\config.py:24: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Settings(BaseSettings):
+
+..\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\testclient.py:1
+  C:\Users\sanja\AppData\Local\Programs\Python\Python311\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+backend\app\schemas\schemas.py:6
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:6: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class RequirementSchema(BaseModel):
+
+backend\app\schemas\schemas.py:22
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class ObligationSchema(BaseModel):
+
+backend\app\schemas\schemas.py:30
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:30: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class SectionSchema(BaseModel):
+
+backend\app\schemas\schemas.py:40
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:40: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class KnowledgeGraphChainSchema(BaseModel):
+
+backend\app\schemas\schemas.py:53
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:53: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class RegulatoryApplicabilityCriterionSchema(BaseModel):
+
+backend\app\schemas\schemas.py:69
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:69: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class RegulationSchema(BaseModel):
+
+backend\app\schemas\schemas.py:185
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:185: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class EvidenceResponse(BaseModel):
+
+backend\app\schemas\schemas.py:202
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:202: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class ActivityResponse(BaseModel):
+
+backend\app\schemas\schemas.py:220
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:220: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class CommentResponse(BaseModel):
+
+backend\app\schemas\schemas.py:239
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:239: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class TriggerEventResponse(BaseModel):
+
+backend\app\schemas\schemas.py:254
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:254: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class TaskResponse(TaskBase):
+
+backend\app\schemas\schemas.py:302
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:302: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class SourceResponse(SourceBase):
+
+backend\app\schemas\schemas.py:310
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:310: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class AuditLogResponse(BaseModel):
+
+backend\app\schemas\schemas.py:334
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:334: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class RegulatoryApplicabilityAssessmentOut(BaseModel):
+
+backend\app\schemas\schemas.py:361
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:361: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class RegulatoryObligationOut(BaseModel):
+
+backend\app\schemas\schemas.py:432
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:432: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class ComplianceAlertResponse(BaseModel):
+
+backend\app\schemas\schemas.py:467
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:467: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class ComplianceIntelligenceSnapshotResponse(BaseModel):
+
+backend\app\schemas\schemas.py:494
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:494: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class ComplianceDefensePackResponse(BaseModel):
+
+backend\app\schemas\schemas.py:512
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\schemas\schemas.py:512: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class ComplianceEvidenceManifestResponse(BaseModel):
+
+backend\app\api\v1\endpoints\enterprise.py:25
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\api\v1\endpoints\enterprise.py:25: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class EnterpriseProfileOut(BaseModel):
+
+backend\app\api\v1\endpoints\enterprise.py:96
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\api\v1\endpoints\enterprise.py:96: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class UserOut(BaseModel):
+
+backend\app\api\v1\endpoints\discovery.py:22
+  C:\Users\sanja\AI-Powered Compliance System\backend\app\api\v1\endpoints\discovery.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class DiscoveredFactOut(BaseModel):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED backend/tests/test_applicability_engine.py::test_jurisdiction_alone_requires_review_when_mandatory_criteria_missing
+================ 1 failed, 8 deselected, 24 warnings in 1.95s =================
+

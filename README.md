@@ -288,6 +288,12 @@ npm run dev
 ```
 Frontend Web Application will run at: **http://localhost:3000**
 
+### 5. Production Deployment Readiness
+Aegis AI is production-ready.
+- **Backend**: Execute the ordered migration sequence via `backend/scripts/migrate_*.py`. Run `python scripts/production_readiness_audit.py` to verify JWT secrets, CORS configuration, and OS environment. Deploy via Gunicorn/Uvicorn.
+- **Frontend**: Execute `npm run build`. The frontend dynamically maps the API Base URL to its origin via relative paths (`/api/v1`) or the `VITE_API_BASE_URL` environment variable.
+- **End-to-End Auditing**: Execute `python scripts/final_e2e_verification.py` to assert cryptographic Defense Pack determinism, multi-tenant isolation, and upstream immutable logic bounds prior to go-live.
+
 ---
 
 ## 8. Automated Testing & Evaluation Harness

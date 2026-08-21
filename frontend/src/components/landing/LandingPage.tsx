@@ -14,11 +14,14 @@ import { NavSection } from '../../types';
 interface LandingPageProps {
   onNavigate: (section: NavSection) => void;
   onOpenLogin: () => void;
+  orgStatus?: string;
+  onStartSetup?: () => void;
 }
 
-export function LandingPage({ onNavigate, onOpenLogin }: LandingPageProps) {
+export function LandingPage({ onNavigate, onOpenLogin, orgStatus, onStartSetup }: LandingPageProps) {
+  const needsSetup = orgStatus === 'SETUP_REQUIRED';
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-brand-500/30 selection:text-brand-200 relative overflow-hidden flex flex-col justify-between">
+    <div className="h-screen bg-slate-950 text-slate-100 font-sans selection:bg-brand-500/30 selection:text-brand-200 relative overflow-hidden flex flex-col justify-between">
       {/* Background Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-gradient-to-b from-brand-500/10 via-cyan-500/5 to-transparent blur-3xl pointer-events-none rounded-full" />
 
@@ -38,10 +41,10 @@ export function LandingPage({ onNavigate, onOpenLogin }: LandingPageProps) {
 
           <div className="hidden md:flex items-center space-x-6 text-xs font-medium text-slate-400">
             <button onClick={() => onNavigate('landing')} className="text-white font-semibold">Home</button>
-            <button onClick={() => onNavigate('workspace')} className="hover:text-white transition-colors">Workspace</button>
-            <button onClick={() => onNavigate('repository')} className="hover:text-white transition-colors">Regulations</button>
-            <button onClick={() => onNavigate('graph')} className="hover:text-white transition-colors">Knowledge Graph</button>
-            <button onClick={() => onNavigate('copilot')} className="hover:text-white transition-colors">Copilot</button>
+            <button onClick={() => onNavigate('workspace')} className="hover:text-white transition-colors">Overview</button>
+            <button onClick={() => onNavigate('repository')} className="hover:text-white transition-colors">Repository</button>
+            <button onClick={() => onNavigate('actions')} className="hover:text-white transition-colors">Actions</button>
+            <button onClick={() => onNavigate('audit')} className="hover:text-white transition-colors">Audit</button>
           </div>
 
           <div className="flex items-center space-x-3">
@@ -63,10 +66,10 @@ export function LandingPage({ onNavigate, onOpenLogin }: LandingPageProps) {
       </header>
 
       {/* MINIMAL HERO SECTION */}
-      <main className="max-w-5xl mx-auto px-6 pt-16 pb-20 my-auto text-center space-y-8 relative z-10">
+      <main className="max-w-5xl mx-auto px-6 py-4 my-auto text-center space-y-6 relative z-10 flex-1 flex flex-col justify-center">
         
         {/* Minimal Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-[11px] font-medium text-slate-300">
+        <div className="mx-auto w-fit inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-[11px] font-medium text-slate-300">
           <Sparkles className="w-3.5 h-3.5 text-brand-400" />
           <span>Enterprise Regulatory OS</span>
         </div>
@@ -86,25 +89,36 @@ export function LandingPage({ onNavigate, onOpenLogin }: LandingPageProps) {
 
         {/* Minimal Action Buttons */}
         <div className="flex items-center justify-center gap-3 pt-2">
-          <button
-            onClick={() => onNavigate('workspace')}
-            className="px-6 py-2.5 rounded-lg font-semibold text-xs text-white bg-brand-600 hover:bg-brand-500 shadow-lg shadow-brand-600/20 transition-all flex items-center gap-2"
-          >
-            <span>Launch App</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          {needsSetup ? (
+            <button
+              onClick={() => onStartSetup ? onStartSetup() : onNavigate('workspace')}
+              className="px-6 py-2.5 rounded-lg font-semibold text-xs text-white bg-brand-600 hover:bg-brand-500 shadow-lg shadow-brand-600/20 transition-all flex items-center gap-2"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Set Up Your Organization</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              onClick={() => onNavigate('workspace')}
+              className="px-6 py-2.5 rounded-lg font-semibold text-xs text-white bg-brand-600 hover:bg-brand-500 shadow-lg shadow-brand-600/20 transition-all flex items-center gap-2"
+            >
+              <span>Launch App</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          )}
 
           <button
-            onClick={() => onNavigate('graph')}
+            onClick={() => onNavigate('repository')}
             className="px-6 py-2.5 rounded-lg font-semibold text-xs text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-850 border border-slate-800 transition-all flex items-center gap-2"
           >
             <GitFork className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Explore Knowledge Graph</span>
+            <span>Explore Repository</span>
           </button>
         </div>
 
         {/* Minimal Stats */}
-        <div className="pt-10 grid grid-cols-3 gap-4 max-w-xl mx-auto border-t border-slate-900">
+        <div className="pt-6 grid grid-cols-3 gap-4 max-w-xl mx-auto border-t border-slate-900">
           <div className="space-y-0.5">
             <div className="text-xl font-bold text-white font-mono">8-Hop</div>
             <div className="text-[10px] text-slate-400 uppercase tracking-wider font-medium">Impact Lineage</div>
@@ -120,16 +134,16 @@ export function LandingPage({ onNavigate, onOpenLogin }: LandingPageProps) {
         </div>
 
         {/* Minimal Feature Cards Grid */}
-        <div className="pt-8 grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+        <div className="pt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
           
           <div
-            onClick={() => onNavigate('graph')}
+            onClick={() => onNavigate('repository')}
             className="p-5 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-brand-500/40 transition-all space-y-2 cursor-pointer group"
           >
             <GitFork className="w-5 h-5 text-brand-400 group-hover:scale-110 transition-transform" />
             <h3 className="text-xs font-bold text-white">Statutory Lineage</h3>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Traces regulatory amendments directly to internal controls (`CTRL-*`) and IT systems.
+              Traces regulatory amendments directly to internal controls (`CTRL-*`) and IT systems. Open any regulation to explore its 8-hop impact graph.
             </p>
           </div>
 
@@ -160,7 +174,7 @@ export function LandingPage({ onNavigate, onOpenLogin }: LandingPageProps) {
       </main>
 
       {/* MINIMAL FOOTER */}
-      <footer className="border-t border-slate-900 py-6 text-center text-[11px] text-slate-400">
+      <footer className="border-t border-slate-900 py-3 text-center text-[11px] text-slate-400">
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <ShieldCheck className="w-3.5 h-3.5 text-brand-400" />

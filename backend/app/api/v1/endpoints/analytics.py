@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from app.models.domain import EnterpriseProfile
 from sqlalchemy import func
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_current_organization
 from app.models.domain import Regulation, KnowledgeGraphChain, ComplianceTask
 from app.schemas.schemas import AnalyticsOverviewResponse
 
@@ -11,7 +12,8 @@ router = APIRouter()
 @router.get("/overview", response_model=AnalyticsOverviewResponse)
 def get_analytics_overview(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    current_profile: EnterpriseProfile = Depends(get_current_organization)
 ):
     reg_count = db.query(func.count(Regulation.id)).scalar() or 0
     mapped_count = db.query(func.count(KnowledgeGraphChain.id)).scalar() or 0

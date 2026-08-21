@@ -89,3 +89,30 @@ def require_roles(allowed_roles: list[str]):
         return current_user
     return role_checker
 
+from app.models.domain import EnterpriseProfile
+
+def get_current_organization(
+    current_user: EnterpriseUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> EnterpriseProfile:
+    """
+    Strictly resolves the multi-tenant identity.
+    Fails closed if the user lacks a valid explicit organization mapping.
+    """
+    print(f"DEBUG get_current_organization: User ID={current_user.id}, Org ID={current_user.organization_id}")
+    if not current_user.organization_id:
+        print("DEBUG get_current_organization: FAILING because organization_id is None")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User identity is not mapped to an organization."
+        )
+    profile = db.query(EnterpriseProfile).filter(EnterpriseProfile.id == current_user.organization_id).first()
+    if not profile:
+        print(f"DEBUG get_current_organization: FAILING because profile not found for ID {current_user.organization_id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User organization context is invalid."
+        )
+    print(f"DEBUG get_current_organization: SUCCESS found profile {profile.id}")
+    return profile
+

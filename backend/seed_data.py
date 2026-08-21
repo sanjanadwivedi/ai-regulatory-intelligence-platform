@@ -4,7 +4,7 @@ from app.models.domain import (
     RegulatorySource, Regulation, Section, Obligation, Requirement,
     KnowledgeGraphChain, ComplianceTask, AuditLog,
     InternalControl, EnterprisePolicy, EnterpriseProcess, EnterpriseApplication,
-    EnterpriseProfile, EnterpriseUser
+    EnterpriseProfile, EnterpriseUser, RegulatoryApplicabilityCriterion
 )
 
 
@@ -39,13 +39,13 @@ def seed_database_data():
         existing_regs = db.query(Regulation).count()
         existing_controls = db.query(InternalControl).count()
         if existing_regs >= 5 and existing_controls >= 5:
-            return # Fully seeded
-
+            pass # We still might need to fix users, so let's continue or just return. Wait, if it's fully seeded, the users might still have None organization_id!
 
         print("Seeding Enterprise Regulatory Knowledge Ontology & Graph...")
 
         # 0. Clear stale partial records
         db.query(KnowledgeGraphChain).delete()
+        db.query(RegulatoryApplicabilityCriterion).delete()
         db.query(ComplianceTask).delete()
         db.query(Requirement).delete()
         db.query(Obligation).delete()
@@ -56,27 +56,48 @@ def seed_database_data():
         db.query(EnterprisePolicy).delete()
         db.query(EnterpriseProcess).delete()
         db.query(EnterpriseApplication).delete()
+        
+        # We don't delete EnterpriseProfile because we might have foreign key constraints, or we DO delete it but cascade?
+        # Actually, let's keep the EnterpriseProfile delete, then create it immediately.
         db.query(EnterpriseProfile).delete()
         db.commit()
 
-        # Seed initial enterprise users if not present
-        if db.query(EnterpriseUser).count() == 0:
-            from app.core.security import get_password_hash
-            u1 = EnterpriseUser(
-                full_name="Sanjana",
-                role="Compliance Officer",
-                email="sanjana@hdfcbank.com",
-                hashed_password=get_password_hash("password123")
-            )
-            u2 = EnterpriseUser(
-                full_name="Admin User",
-                role="ADMIN",
-                email="admin@aegis.com",
-                hashed_password=get_password_hash("admin123")
-            )
-            db.add_all([u1, u2])
-            db.commit()
+        # Enterprise Profile
+        profile = EnterpriseProfile(
+            organization_name="HDFC Bank Ltd",
+            industry_sector="Banking & Financial Services",
+            departments=["Information Security (CISO)", "Compliance & Legal", "Retail Banking", "Treasury & Forex", "Algorithmic Trading Desk"],
+            country="India",
+            regulator_region="Global / India"
+        )
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
 
+        # Seed initial enterprise users if not present, and update existing ones
+        from app.core.security import get_password_hash
+        canonical_users = [
+            {"email": "admin@aegis.com", "full_name": "System Administrator", "role": "ADMIN", "password": "ChangeMe!2026"},
+            {"email": "officer@aegis.com", "full_name": "Compliance Officer", "role": "Compliance Officer", "password": "ChangeMe!2026"},
+            {"email": "sanjana@hdfcbank.com", "full_name": "Sanjana Dwivedi", "role": "Compliance Officer", "password": "ChangeMe!2026"},
+        ]
+        for udata in canonical_users:
+            u = db.query(EnterpriseUser).filter(EnterpriseUser.email == udata["email"]).first()
+            if not u:
+                u = EnterpriseUser(
+                    full_name=udata["full_name"],
+                    role=udata["role"],
+                    email=udata["email"],
+                    hashed_password=get_password_hash(udata["password"]),
+                    organization_id=profile.id
+                )
+                db.add(u)
+            else:
+                u.full_name = udata["full_name"]
+                u.role = udata["role"]
+                u.hashed_password = get_password_hash(udata["password"])
+                u.organization_id = profile.id
+        db.commit()
 
         # 1. Sources
         sources = [
@@ -124,14 +145,6 @@ def seed_database_data():
         ]
         db.add_all(sources)
 
-        # Enterprise Profile
-        db.add(EnterpriseProfile(
-            organization_name="HDFC Bank Ltd",
-            industry_sector="Banking & Financial Services",
-            departments=["Information Security (CISO)", "Compliance & Legal", "Retail Banking", "Treasury & Forex", "Algorithmic Trading Desk"],
-            country="India",
-            regulator_region="Global / India"
-        ))
 
         # 2. Enterprise Internal Controls & Policy Mappings
         controls = [
@@ -345,6 +358,42 @@ To, All Authorised Dealer Category-I banks
         )
 
         db.add_all([r_cyber, r_health, r_cap, r1, r_ocr_review])
+        db.add_all([r_cyber, r_health, r_cap, r1, r_ocr_review])
+        db.commit()
+
+        # 3.5 Applicability Criteria
+        criteria = [
+            # CERT-In (reg-cyber-2026)
+            RegulatoryApplicabilityCriterion(regulation_id=r_cyber.id, criterion_type="Territorial Jurisdiction", description="Organization operates in India", operator="IN", expected_value="india,mumbai,delhi,bengaluru,chennai,noida", evidence_fact_type="LOCATION", provenance_reference="Section 70B(6) IT Act", is_mandatory=1),
+            RegulatoryApplicabilityCriterion(regulation_id=r_cyber.id, criterion_type="Covered Entity Scope", description="Organization is a Service Provider", operator="CONTAINS", expected_value="service provider", evidence_fact_type="BUSINESS_ACTIVITY", provenance_reference="Section 70B(6) IT Act", is_mandatory=0, criterion_group="CERT_COVERED_ENTITY", group_operator="OR"),
+            RegulatoryApplicabilityCriterion(regulation_id=r_cyber.id, criterion_type="Covered Entity Scope", description="Organization is an Intermediary", operator="CONTAINS", expected_value="intermediary", evidence_fact_type="BUSINESS_ACTIVITY", provenance_reference="Section 70B(6) IT Act", is_mandatory=0, criterion_group="CERT_COVERED_ENTITY", group_operator="OR"),
+            RegulatoryApplicabilityCriterion(regulation_id=r_cyber.id, criterion_type="Covered Entity Scope", description="Organization is a Data Centre", operator="CONTAINS", expected_value="data centre", evidence_fact_type="BUSINESS_ACTIVITY", provenance_reference="Section 70B(6) IT Act", is_mandatory=0, criterion_group="CERT_COVERED_ENTITY", group_operator="OR"),
+            RegulatoryApplicabilityCriterion(regulation_id=r_cyber.id, criterion_type="Covered Entity Scope", description="Organization is a Body Corporate", operator="CONTAINS", expected_value="body corporate", evidence_fact_type="BUSINESS_ACTIVITY", provenance_reference="Section 70B(6) IT Act", is_mandatory=0, criterion_group="CERT_COVERED_ENTITY", group_operator="OR"),
+            RegulatoryApplicabilityCriterion(regulation_id=r_cyber.id, criterion_type="Covered Entity Scope", description="Organization is a Cloud Service Provider", operator="CONTAINS", expected_value="cloud service provider", evidence_fact_type="BUSINESS_ACTIVITY", provenance_reference="Section 70B(6) IT Act", is_mandatory=0, criterion_group="CERT_COVERED_ENTITY", group_operator="OR"),
+            RegulatoryApplicabilityCriterion(regulation_id=r_cyber.id, criterion_type="Covered Entity Scope", description="Organization is a VPS Provider", operator="CONTAINS", expected_value="vps provider", evidence_fact_type="BUSINESS_ACTIVITY", provenance_reference="Section 70B(6) IT Act", is_mandatory=0, criterion_group="CERT_COVERED_ENTITY", group_operator="OR"),
+            RegulatoryApplicabilityCriterion(regulation_id=r_cyber.id, criterion_type="Covered Entity Scope", description="Organization is a Government Organisation", operator="CONTAINS", expected_value="government organisation", evidence_fact_type="BUSINESS_ACTIVITY", provenance_reference="Section 70B(6) IT Act", is_mandatory=0, criterion_group="CERT_COVERED_ENTITY", group_operator="OR"),
+
+            # HIPAA (reg-hipaa-2026)
+            RegulatoryApplicabilityCriterion(regulation_id=r_health.id, criterion_type="Territorial Jurisdiction", description="Organization operates in the United States", operator="IN", expected_value="united states,u.s.,new york,california,delaware", evidence_fact_type="LOCATION", provenance_reference="45 CFR Part 164", is_mandatory=1),
+            RegulatoryApplicabilityCriterion(regulation_id=r_health.id, criterion_type="Covered Entity Scope", description="Organization is a Health Plan", operator="CONTAINS", expected_value="health plan", evidence_fact_type="BUSINESS_ACTIVITY", provenance_reference="45 CFR Part 164", is_mandatory=0, criterion_group="HIPAA_COVERED_ENTITY", group_operator="OR"),
+            RegulatoryApplicabilityCriterion(regulation_id=r_health.id, criterion_type="Covered Entity Scope", description="Organization is a Healthcare Clearinghouse", operator="CONTAINS", expected_value="healthcare clearinghouse", evidence_fact_type="BUSINESS_ACTIVITY", provenance_reference="45 CFR Part 164", is_mandatory=0, criterion_group="HIPAA_COVERED_ENTITY", group_operator="OR"),
+            RegulatoryApplicabilityCriterion(regulation_id=r_health.id, criterion_type="Covered Entity Scope", description="Organization is a Healthcare Provider", operator="CONTAINS", expected_value="healthcare provider", evidence_fact_type="BUSINESS_ACTIVITY", provenance_reference="45 CFR Part 164", is_mandatory=0, criterion_group="HIPAA_COVERED_ENTITY", group_operator="OR"),
+            RegulatoryApplicabilityCriterion(regulation_id=r_health.id, criterion_type="Covered Entity Scope", description="Organization is a Business Associate", operator="CONTAINS", expected_value="business associate", evidence_fact_type="BUSINESS_ACTIVITY", provenance_reference="45 CFR Part 164", is_mandatory=0, criterion_group="HIPAA_COVERED_ENTITY", group_operator="OR"),
+
+            # SEC Trading (reg-sec-trading-2026)
+            RegulatoryApplicabilityCriterion(regulation_id=r_cap.id, criterion_type="Territorial Jurisdiction", description="Organization operates in the United States", operator="IN", expected_value="united states,u.s.,new york,california,delaware", evidence_fact_type="LOCATION", provenance_reference="SEC Release No. 33-11216", is_mandatory=1),
+            RegulatoryApplicabilityCriterion(regulation_id=r_cap.id, criterion_type="SEC Regulated Scope", description="Organization is publicly traded", operator="CONTAINS", expected_value="publicly traded", evidence_fact_type="BUSINESS_ACTIVITY", provenance_reference="SEC Release No. 33-11216", is_mandatory=0, criterion_group="SEC_REGISTRANT", group_operator="OR", minimum_evidence_strength="AUTHORITATIVE"),
+            RegulatoryApplicabilityCriterion(regulation_id=r_cap.id, criterion_type="SEC Regulated Scope", description="Organization is an SEC registrant", operator="CONTAINS", expected_value="registrant", evidence_fact_type="LICENSE", provenance_reference="SEC Release No. 33-11216", is_mandatory=0, criterion_group="SEC_REGISTRANT", group_operator="OR", minimum_evidence_strength="AUTHORITATIVE"),
+            RegulatoryApplicabilityCriterion(regulation_id=r_cap.id, criterion_type="SEC Regulated Scope", description="Organization is an SEC reporting company", operator="CONTAINS", expected_value="sec reporting company", evidence_fact_type="BUSINESS_ACTIVITY", provenance_reference="SEC Release No. 33-11216", is_mandatory=0, criterion_group="SEC_REGISTRANT", group_operator="OR", minimum_evidence_strength="AUTHORITATIVE"),
+
+            # RBI KYC (reg-rbi-kyc-2026)
+            RegulatoryApplicabilityCriterion(regulation_id=r1.id, criterion_type="Territorial Jurisdiction", description="Organization operates in India", operator="IN", expected_value="india,mumbai,delhi,bengaluru,chennai,noida", evidence_fact_type="LOCATION", provenance_reference="RBI Master Direction, 2016", is_mandatory=1),
+            RegulatoryApplicabilityCriterion(regulation_id=r1.id, criterion_type="RBI Regulated Entity Status", description="Organization is a Bank", operator="CONTAINS", expected_value="bank", evidence_fact_type="LICENSE", provenance_reference="RBI Master Direction, 2016", is_mandatory=0, criterion_group="RBI_REGULATED_ENTITY", group_operator="OR", minimum_evidence_strength="AUTHORITATIVE"),
+            RegulatoryApplicabilityCriterion(regulation_id=r1.id, criterion_type="RBI Regulated Entity Status", description="Organization is an NBFC", operator="CONTAINS", expected_value="nbfc", evidence_fact_type="LICENSE", provenance_reference="RBI Master Direction, 2016", is_mandatory=0, criterion_group="RBI_REGULATED_ENTITY", group_operator="OR", minimum_evidence_strength="AUTHORITATIVE"),
+            RegulatoryApplicabilityCriterion(regulation_id=r1.id, criterion_type="RBI Regulated Entity Status", description="Organization is a payment-related entity", operator="CONTAINS", expected_value="payment system operator", evidence_fact_type="LICENSE", provenance_reference="RBI Master Direction, 2016", is_mandatory=0, criterion_group="RBI_REGULATED_ENTITY", group_operator="OR", minimum_evidence_strength="AUTHORITATIVE"),
+            RegulatoryApplicabilityCriterion(regulation_id=r1.id, criterion_type="RBI Regulated Entity Status", description="Organization is another RBI regulated entity", operator="CONTAINS", expected_value="rbi regulated entity", evidence_fact_type="LICENSE", provenance_reference="RBI Master Direction, 2016", is_mandatory=0, criterion_group="RBI_REGULATED_ENTITY", group_operator="OR", minimum_evidence_strength="AUTHORITATIVE"),
+        ]
+        db.add_all(criteria)
         db.commit()
 
         # 4. Sections & Obligations

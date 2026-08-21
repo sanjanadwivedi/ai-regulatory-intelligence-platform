@@ -7,12 +7,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
+from app.models.domain import EnterpriseProfile
 from app.core.database import get_db, SessionLocal
 from app.models.domain import (
     Regulation, Section, Obligation, Requirement,
     KnowledgeGraphChain, ComplianceTask, AuditLog
 )
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_current_organization
 from app.schemas.schemas import RegulationSchema, RegulationCreate
 
 
@@ -518,7 +519,8 @@ def resolve_regulation_source_url(regulation_id: str, db: Session = Depends(get_
 def re_extract_regulation(
     regulation_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    current_profile: EnterpriseProfile = Depends(get_current_organization)
 ):
     """
     Trigger full re-extraction of a regulation from its source_url.
@@ -679,7 +681,8 @@ def re_extract_regulation(
 def batch_re_extract_regulations(
     request_body: Dict[str, Any],
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    current_profile: EnterpriseProfile = Depends(get_current_organization)
 ):
     """
     Batch re-extract all regulations matching filters.

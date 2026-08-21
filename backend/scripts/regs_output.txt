@@ -1,0 +1,127 @@
+﻿python : SECURITY WARNING: Using default insecure SECRET_KEY. Set SECRET_KEY in .env for production!
+At line:1 char:1
++ python scripts/inspect_regs.py 2>&1 | Out-File -Encoding utf8 scripts ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (SECURITY WARNIN...for production!:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+=== reg-cyber-2026 ===
+  Title: CERT-In Directions under Section 70B(6) of Information Technology Act, 2000
+  Authority: Indian Computer Emergency Response Team (CERT-In & MeitY)
+  Region: India & Global
+  Sector: Technology & Cloud Security
+  Status: NEEDS_HUMAN_REVIEW
+  Effective: 2022-06-27
+  Source URL: https://pib.gov.in/PressReleasePage.aspx?PRID=1820904
+  Content length: 4409 chars
+  Scope keywords found: ['service provider']
+  Sections in DB: 1
+
+=== reg-hipaa-2026 ===
+  Title: HIPAA Security Standards for Protection of Electronic Protected Health Information (45 CFR Part 164)
+  Authority: U.S. Dept of Health & Human Services (HHS / eCFR)
+  Region: Global / US
+  Sector: Healthcare & Life Sciences
+  Status: NEEDS_HUMAN_REVIEW
+  Effective: 2026-06-15
+  Source URL: https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164
+  Content length: 388 chars
+  Scope keywords found: []
+  Sections in DB: 1
+
+=== reg-sec-trading-2026 ===
+  Title: SEC Release No. 33-11216: Cybersecurity Risk Management & Algorithmic Trading Disclosure
+  Authority: U.S. Securities and Exchange Commission (SEC / FINRA)
+  Region: United States
+  Sector: Capital Markets & Securities
+  Status: NEEDS_HUMAN_REVIEW
+  Effective: 2026-05-10
+  Source URL: https://www.finra.org/rules-guidance/rulebooks/finra-rules
+  Content length: 5312 chars
+  Scope keywords found: []
+  Sections in DB: 1
+
+=== reg-rbi-kyc-2026 ===
+  Title: Master Direction ΓÇô Know Your Customer (KYC) Direction, 2016 (Updated as on July 15, 2026)
+  Authority: Reserve Bank of India (RBI)
+  Region: India
+  Sector: Banking & Financial Services
+  Status: NEEDS_HUMAN_REVIEW
+  Effective: 2026-07-15
+  Source URL: https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=12093
+  Content length: 3499 chars
+  Scope keywords found: ['shall apply']
+  Sections in DB: 1
+
+=== reg-scan-rbi-2026 ===
+  Title: [FLAGGED SCAN] Special Rupee Vostro Accounts (SRVAs)
+  Authority: Reserve Bank of India (RBI)
+  Region: India
+  Sector: Banking & Financial Services
+  Status: NEEDS_HUMAN_REVIEW
+  Effective: 2026-07-17
+  Source URL: https://www.rbi.org.in/Scripts/NotificationUser.aspx
+  Content length: 8087 chars
+  Scope keywords found: []
+  Sections in DB: 1
+
+=== reg-live-f48830a4 ===
+  Title: Half-yearly Publications
+  Authority: Reserve Bank of India (RBI)
+  Region: Asia-Pacific / India
+  Sector: Banking & Financial Services
+  Status: NEEDS_HUMAN_REVIEW
+  Effective: 2026-10-02
+  Source URL: https://www.rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx
+  Content length: 14172 chars
+  Scope keywords found: []
+  Sections in DB: 1
+
+=== reg-live-f6887756 ===
+  Title: Quarterly Publications
+  Authority: Reserve Bank of India (RBI)
+  Region: Asia-Pacific / India
+  Sector: Banking & Financial Services
+  Status: NEEDS_HUMAN_REVIEW
+  Effective: 2026-10-02
+  Source URL: https://www.rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx
+  Content length: 14172 chars
+  Scope keywords found: []
+  Sections in DB: 1
+
+=== reg-live-64e89068 ===
+  Title: Log In to other FINRA systems
+  Authority: U.S. Securities and Exchange Commission (SEC / FINRA)
+  Region: North America / US
+  Sector: Capital Markets & Securities
+  Status: NEEDS_HUMAN_REVIEW
+  Effective: 2026-10-02
+  Source URL: https://www.finra.org/rules-guidance/rulebooks/finra-rules
+  Content length: 5132 chars
+  Scope keywords found: []
+  Sections in DB: 1
+
+=== reg-live-4f15de97 ===
+  Title: Interpreting the Rules
+  Authority: U.S. Securities and Exchange Commission (SEC / FINRA)
+  Region: North America / US
+  Sector: Capital Markets & Securities
+  Status: ANALYZED
+  Effective: 2026-10-02
+  Source URL: https://www.finra.org/rules-guidance/rulebooks/finra-rules
+  Content length: 325 chars
+  Scope keywords found: []
+  Sections in DB: 1
+
+=== reg-live-9d0c8130 ===
+  Title: FederalRegister.gov API
+  Authority: Health & Human Services (HHS / Cornell LII)
+  Region: Global / US
+  Sector: Healthcare & Life Sciences
+  Status: NEEDS_HUMAN_REVIEW
+  Effective: 2026-10-02
+  Source URL: https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164
+  Content length: 1031 chars
+  Scope keywords found: []
+  Sections in DB: 1
+

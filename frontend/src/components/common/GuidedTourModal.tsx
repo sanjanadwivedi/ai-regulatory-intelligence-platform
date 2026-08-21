@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ArrowRight, ShieldCheck, GitBranch, Bot, CheckCircle2, Sparkles, HelpCircle } from 'lucide-react';
+import { X, ArrowRight, ShieldCheck, GitBranch, Bot, CheckCircle2, Sparkles, HelpCircle, Building2, FileText } from 'lucide-react';
 
 interface GuidedTourModalProps {
   isOpen: boolean;
@@ -18,42 +18,74 @@ export const GuidedTourModal: React.FC<GuidedTourModalProps> = ({
 
   const TOUR_STEPS = [
     {
-      title: 'Welcome to Aegis AI',
+      title: '1. Organization Discovery',
+      icon: Building2,
+      color: 'text-amber-400',
+      badge: 'Step 1 of 8: Profile Configuration',
+      description: 'Define your Enterprise Profile. ReguGuard AI automatically identifies key business activities, sectors, and jurisdictions to build your organizational context.',
+      actionLabel: 'Setup Enterprise Profile',
+      targetSection: 'organization-discovery',
+    },
+    {
+      title: '2. Regulatory Repository',
       icon: Sparkles,
       color: 'text-brand-400',
-      badge: 'Step 1 of 4: Platform Overview',
-      description:
-        'Aegis AI automates regulatory change management for enterprise banks and financial institutions. It continuously ingests statutory circulars (RBI, SEC), builds knowledge graphs, and enforces dual-control compliance sign-offs.',
-      actionLabel: 'Explore Morning Briefing',
+      badge: 'Step 2 of 8: AI Ingestion',
+      description: 'Ingest and monitor real-time regulatory signals from global authorities. Documents are processed to detect entities, deadlines, and requirements.',
+      actionLabel: 'Explore Repository',
+      targetSection: 'repository',
+    },
+    {
+      title: '3. Legal Applicability',
+      icon: GitBranch,
+      color: 'text-cyan-400',
+      badge: 'Step 3 of 8: Impact Assessment',
+      description: 'The AI matches your Enterprise Profile against the regulatory rules to determine exactly which statutes apply to your organization.',
+      actionLabel: 'View Applicability',
       targetSection: 'workspace',
     },
     {
-      title: '8-Hop Enterprise Knowledge Graph',
-      icon: GitBranch,
-      color: 'text-cyan-400',
-      badge: 'Step 2 of 4: Impact Blast Radius',
-      description:
-        'Instead of guessing which IT systems break when a new regulation is issued, the Knowledge Graph automatically maps: Regulation ➔ Section ➔ Requirement ➔ Control ➔ Policy ➔ Department ➔ Core Banking App.',
-      actionLabel: 'View Interactive Graph Canvas',
-      targetSection: 'graph',
-    },
-    {
-      title: '4-Eyes Dual Control Sign-offs',
+      title: '4. Statutory Obligations',
       icon: ShieldCheck,
       color: 'text-indigo-400',
-      badge: 'Step 3 of 4: Governance Sign-off',
-      description:
-        'Prevents compliance failures by requiring dual-control verification (Compliance Officer + General Counsel). Approvals generate immutable cryptographic signature hashes (SIG-4EYES-XXXX) logged to the SOC2 audit ledger.',
-      actionLabel: 'Open Reviews & Sign-offs Console',
-      targetSection: 'reviews',
+      badge: 'Step 4 of 8: Extraction',
+      description: 'Extract actionable requirements and map them to your internal controls, creating a deterministic Knowledge Graph from Law to Code.',
+      actionLabel: 'Review Obligations',
+      targetSection: 'workspace',
     },
     {
-      title: 'Zero-Hallucination AI Copilot',
-      icon: Bot,
+      title: '5. Operational Tasks',
+      icon: CheckCircle2,
+      color: 'text-emerald-400',
+      badge: 'Step 5 of 8: Task Instantiation',
+      description: 'Generate trackable operational tasks from active statutory obligations. Distinguish clearly between internal deadlines and legal mandates.',
+      actionLabel: 'Manage Tasks',
+      targetSection: 'actions',
+    },
+    {
+      title: '6. Task Execution & Evidence',
+      icon: FileText,
       color: 'text-purple-400',
-      badge: 'Step 4 of 4: Grounded Statutory AI',
-      description:
-        'Ask statutory compliance questions in plain English. The RAG pipeline retrieves exact statutory clauses (e.g. RBI Section 4.1) and provides 98%+ confidence answers with grounded citations.',
+      badge: 'Step 6 of 8: Action Center',
+      description: 'Perform work, record trigger events, attach documentation, and secure 4-eyes dual-control sign-offs for critical compliance actions.',
+      actionLabel: 'Execute Tasks',
+      targetSection: 'actions',
+    },
+    {
+      title: '7. Evidence & Audit Package',
+      icon: ShieldCheck,
+      color: 'text-brand-400',
+      badge: 'Step 7 of 8: Cryptographic Audit',
+      description: 'Generate immutable snapshots of your compliance posture, linking statutory requirements directly to executed tasks and evidence files.',
+      actionLabel: 'Generate Audit Package',
+      targetSection: 'intelligence',
+    },
+    {
+      title: '8. Ambient AI Copilot',
+      icon: Bot,
+      color: 'text-rose-400',
+      badge: 'Step 8 of 8: Continuous Intelligence',
+      description: 'Ask grounded questions in plain English. The AI Copilot accesses your entire 3-Layer architecture to explain reasoning and trace provenance.',
       actionLabel: 'Test AI Copilot',
       targetSection: 'copilot',
     },
