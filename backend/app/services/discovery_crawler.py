@@ -7,6 +7,22 @@ from urllib.robotparser import RobotFileParser
 from typing import List, Dict, Set, Optional, Tuple
 import requests
 from bs4 import BeautifulSoup
+from app.acl.adapters import _validate_url
+
+class SSRFSafeSession(requests.Session):
+    """
+    Overrides requests.Session to globally enforce SSRF protections 
+    on both the initial request and any followed redirects.
+    """
+    def request(self, method, url, **kwargs):
+        _validate_url(url)
+        return super().request(method, url, **kwargs)
+
+    def get_redirect_target(self, resp):
+        target = super().get_redirect_target(resp)
+        if target:
+            _validate_url(target)
+        return target
 
 logger = logging.getLogger("compliance_platform.discovery_crawler")
 
@@ -84,7 +100,7 @@ class PoliteDiscoveryCrawler:
         self.delay_seconds = delay_seconds
         self.timeout_seconds = timeout_seconds
         self.max_bytes = max_bytes
-        self.session = requests.Session()
+        self.session = SSRFSafeSession()
         self.session.headers.update({
             "User-Agent": USER_AGENT,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",

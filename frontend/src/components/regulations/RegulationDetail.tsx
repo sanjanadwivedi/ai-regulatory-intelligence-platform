@@ -31,6 +31,7 @@ import { RegulationDeltaAnalyzer } from '../diff/RegulationDeltaAnalyzer';
 import { RegulatoryTimeline } from '../timeline/RegulatoryTimeline';
 import { AIReviewWorkspace } from '../workspace/AIReviewWorkspace';
 import { SourceDiffViewer } from '../diff/SourceDiffViewer';
+import { HumanSourceVerificationModal } from '../diff/HumanSourceVerificationModal';
 import { ApplicabilityAssessmentCard } from './ApplicabilityAssessmentCard';
 import { RegulatoryObligationCard } from './RegulatoryObligationCard';
 
@@ -55,6 +56,7 @@ export const RegulationDetail: React.FC<RegulationDetailProps> = ({
   const [auditLoading, setAuditLoading] = useState(false);
   const [resolvingUrl, setResolvingUrl] = useState(false);
   const [resolveSuccessMsg, setResolveSuccessMsg] = useState<string | null>(null);
+  const [showManualVerify, setShowManualVerify] = useState(false);
 
   const handleResolveSourceUrl = async () => {
     setResolvingUrl(true);
@@ -216,14 +218,12 @@ export const RegulationDetail: React.FC<RegulationDetailProps> = ({
             <span>Verify Extraction Completeness 🔍</span>
           </button>
 
-          <a
-            href={getOfficialSourceUrl(regulation)}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={() => setShowManualVerify(true)}
             className="flex items-center space-x-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold px-3 py-1.5 rounded-xl border border-emerald-500/30 text-xs transition-all"
           >
             <span>Verify Official Source 🔗</span>
-          </a>
+          </button>
 
 
           <button
@@ -410,7 +410,7 @@ export const RegulationDetail: React.FC<RegulationDetailProps> = ({
       <div className="space-y-6">
         {activeView === 'GRAPH' && <KnowledgeGraphCanvas regulationId={regulation.id} />}
 
-        {activeView === 'DELTA' && <RegulationDeltaAnalyzer regulationTitle={regulation.title} docNumber={regulation.doc_number} />}
+        {activeView === 'DELTA' && <RegulationDeltaAnalyzer regulationTitle={regulation.title} docNumber={regulation.doc_number} regulationId={regulation.id} />}
 
         {activeView === 'TIMELINE' && <RegulatoryTimeline />}
 
@@ -775,6 +775,17 @@ export const RegulationDetail: React.FC<RegulationDetailProps> = ({
         <SourceDiffViewer
           regulation={regulation}
           onClose={() => setShowSourceDiff(false)}
+        />
+      )}
+
+      {showManualVerify && (
+        <HumanSourceVerificationModal
+          regulation={regulation}
+          onClose={() => setShowManualVerify(false)}
+          onVerified={() => {
+            setShowManualVerify(false);
+            window.location.reload(); // Refresh the page to reflect the new state
+          }}
         />
       )}
     </div>

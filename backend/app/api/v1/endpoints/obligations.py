@@ -107,7 +107,8 @@ def get_regulatory_obligation(
     Retrieve a specific regulatory obligation with complete statutory provenance.
     """
     obligation = db.query(RegulatoryObligation).filter(
-        RegulatoryObligation.id == obligation_id
+        RegulatoryObligation.id == obligation_id,
+        RegulatoryObligation.organization_id == current_profile.id
     ).first()
 
     if not obligation:

@@ -12,6 +12,8 @@ import {
   Loader2, RefreshCw
 } from 'lucide-react';
 import { ApplicabilityReviewActionCenter } from './ApplicabilityReviewActionCenter';
+import { RegulatoryIntelligenceSummaryWidget } from './RegulatoryIntelligenceSummaryWidget';
+import { RegulatoryChangeFeedWidget } from './RegulatoryChangeFeedWidget';
 
 const formatCategory = (cat: string | null | undefined) => {
   if (!cat) return 'Unresolved Item';
@@ -125,7 +127,7 @@ function UnresolvedItemsSection({ items }: { items: UnresolvedItem[] }) {
   );
 }
 
-export function ComplianceIntelligenceDashboard() {
+export function ComplianceIntelligenceDashboard({ navigateTo }: { navigateTo?: any }) {
   type SnapshotState = 'LOADING' | 'NO_SNAPSHOT' | 'GENERATING' | 'SNAPSHOT_READY' | 'ERROR';
   const [viewState, setViewState] = useState<SnapshotState>('LOADING');
 
@@ -259,6 +261,10 @@ export function ComplianceIntelligenceDashboard() {
           <p>{error}</p>
         </div>
       )}
+
+      {/* NEW REGULATORY INTELLIGENCE WORKSPACE (PHASE 21B) */}
+      <RegulatoryIntelligenceSummaryWidget />
+      <RegulatoryChangeFeedWidget navigateTo={navigateTo} />
 
       {/* 1. OVERVIEW */}
       <div className="glass-panel p-6 rounded-2xl border border-slate-800">

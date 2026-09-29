@@ -12,7 +12,17 @@ import {
   ComplianceAlert,
   ComplianceIntelligenceSnapshot,
   ComplianceDefensePack,
-  ComplianceEvidenceManifest
+  ComplianceEvidenceManifest,
+  OrganizationPostureResponse,
+  RegulationPostureResponse,
+  ObligationPostureResponse,
+  InternalControl,
+  ObligationControlMapping,
+  RegulatoryIntelligenceSummary,
+  RegulatoryChangeFeedResponse,
+  RegulatoryChangeDetail,
+  RegulatoryChangeReviewRequest,
+  RegulatoryChangeReviewResponse
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -171,6 +181,12 @@ export const ServiceAPI = {
 
   updateTaskStatus: async (taskId: string, status: TaskStatus): Promise<ComplianceTask> => {
     const res = await api.put(`/tasks/${taskId}`, { status });
+    return res.data;
+  },
+
+  completeTask: async (taskId: string, notes?: string): Promise<ComplianceTask> => {
+    const payload = notes ? { notes } : {};
+    const res = await api.post(`/tasks/${taskId}/complete`, payload);
     return res.data;
   },
 
@@ -539,6 +555,80 @@ export const ServiceAPI = {
     return res.data;
   },
 
+  // --- Posture Breakdown (used by UnifiedAnalyticsDashboard) ---
+  getOrganizationPosture: async (): Promise<OrganizationPostureResponse> => {
+    const res = await api.get('/posture/organization');
+    return res.data;
+  },
+
+  getRegulationPostures: async (): Promise<RegulationPostureResponse[]> => {
+    const res = await api.get('/posture/regulations');
+    return res.data;
+  },
+
+  getObligationPostures: async (): Promise<ObligationPostureResponse[]> => {
+    const res = await api.get('/posture/obligations');
+    return res.data;
+  },
+
+  getOrganizationPostureHistory: async (): Promise<OrganizationPostureResponse[]> => {
+    const res = await api.get('/posture/organization/history');
+    return res.data;
+  },
+
+  // --- Internal Controls (used by ControlsLibrary) ---
+  getControls: async (): Promise<InternalControl[]> => {
+    const res = await api.get('/controls');
+    return res.data;
+  },
+
+  createControl: async (data: Partial<InternalControl>): Promise<InternalControl> => {
+    const res = await api.post('/controls', data);
+    return res.data;
+  },
+
+  mapControlToObligation: async (controlId: string, obligationId: string, rationale: string): Promise<ObligationControlMapping> => {
+    const res = await api.post(`/controls/${controlId}/map`, { obligation_id: obligationId, rationale });
+    return res.data;
+  },
+
+  // --- Phase 21A Regulatory Intelligence ---
+  getRegulatoryIntelligenceSummary: async (): Promise<RegulatoryIntelligenceSummary> => {
+    const res = await api.get('/regulatory-intelligence/summary');
+    return res.data;
+  },
+
+  getRegulatoryChanges: async (skip: number = 0, limit: number = 20, regulationId?: string): Promise<RegulatoryChangeFeedResponse> => {
+    const params: any = { skip, limit };
+    if (regulationId) params.regulation_id = regulationId;
+    const res = await api.get('/regulatory-intelligence/changes', { params });
+    return res.data;
+  },
+
+  getRegulatoryChange: async (changeId: string): Promise<RegulatoryChangeDetail> => {
+    const res = await api.get(`/regulatory-intelligence/changes/${changeId}`);
+    return res.data;
+  },
+
+  reviewRegulatoryChange: async (changeId: string, payload: RegulatoryChangeReviewRequest): Promise<RegulatoryChangeReviewResponse> => {
+    const res = await api.post(`/regulatory-intelligence/changes/${changeId}/review`, payload);
+    return res.data;
+  },
+
+  propagateChangeImpact: async (changeId: string): Promise<any> => {
+    const res = await api.post(`/regulatory-intelligence/changes/${changeId}/propagate-impact`);
+    return res.data;
+  },
+
+  getChangeImpact: async (changeId: string): Promise<any[]> => {
+    const res = await api.get(`/regulatory-intelligence/changes/${changeId}/impact`);
+    return res.data;
+  },
+
+  verifyHumanSource: async (regulationId: string, verifiedUrl: string, notes?: string): Promise<any> => {
+    const res = await api.post(`/regulations/${regulationId}/verify-human-source`, { url: verifiedUrl });
+    return res.data;
+  }
 };
 
 export const apiService = ServiceAPI;

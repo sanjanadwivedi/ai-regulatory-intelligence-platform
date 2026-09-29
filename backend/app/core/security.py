@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from typing import Optional, Any
 from jose import jwt, JWTError
@@ -9,6 +10,8 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.domain import EnterpriseUser
+
+logger = logging.getLogger("compliance_platform.security")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login", auto_error=False)
@@ -99,20 +102,33 @@ def get_current_organization(
     Strictly resolves the multi-tenant identity.
     Fails closed if the user lacks a valid explicit organization mapping.
     """
-    print(f"DEBUG get_current_organization: User ID={current_user.id}, Org ID={current_user.organization_id}")
+    logger.debug("get_current_organization: User ID=%s, Org ID=%s", current_user.id, current_user.organization_id)
     if not current_user.organization_id:
-        print("DEBUG get_current_organization: FAILING because organization_id is None")
+        logger.debug("get_current_organization: failing because organization_id is None")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User identity is not mapped to an organization."
         )
     profile = db.query(EnterpriseProfile).filter(EnterpriseProfile.id == current_user.organization_id).first()
     if not profile:
-        print(f"DEBUG get_current_organization: FAILING because profile not found for ID {current_user.organization_id}")
+        logger.debug("get_current_organization: failing because profile not found for ID %s", current_user.organization_id)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User organization context is invalid."
         )
-    print(f"DEBUG get_current_organization: SUCCESS found profile {profile.id}")
+    logger.debug("get_current_organization: successfully resolved profile %s", profile.id)
+    return profile
+
+
+
+from typing import Optional
+
+def get_current_organization_optional(
+    current_user: EnterpriseUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Optional[EnterpriseProfile]:
+    if not current_user.organization_id:
+        return None
+    profile = db.query(EnterpriseProfile).filter(EnterpriseProfile.id == current_user.organization_id).first()
     return profile
 

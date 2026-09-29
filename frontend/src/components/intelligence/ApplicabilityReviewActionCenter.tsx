@@ -94,6 +94,8 @@ export function ApplicabilityReviewActionCenter() {
     return null;
   }
 
+  const assessmentCount = new Set(reviews.map(r => r.assessment_id)).size;
+
   return (
     <div className="glass-panel p-6 rounded-2xl border border-amber-500/30 mt-8 mb-8">
       <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
@@ -101,7 +103,7 @@ export function ApplicabilityReviewActionCenter() {
         Applicability Reviews Action Center
       </h3>
       <p className="text-slate-400 text-sm mb-6">
-        {reviews.length} items require evidence or human review. The engine could not deterministically establish applicability without these facts.
+        {reviews.length} applicability evidence/review requirements across {assessmentCount} regulatory assessment{assessmentCount === 1 ? '' : 's'}. The engine could not deterministically establish applicability without these facts.
       </p>
 
       <div className="space-y-6">

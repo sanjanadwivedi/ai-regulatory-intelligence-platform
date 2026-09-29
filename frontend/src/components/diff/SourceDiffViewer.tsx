@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Regulation } from '../../types';
 import { ServiceAPI } from '../../services/api';
+import { HumanSourceVerificationModal } from './HumanSourceVerificationModal';
 
 interface SourceDiffViewerProps {
   regulation: Regulation;
@@ -32,6 +33,7 @@ export const SourceDiffViewer: React.FC<SourceDiffViewerProps> = ({ regulation, 
   const [compareMode, setCompareMode] = useState<'SPLIT' | 'UNIFIED'>('SPLIT');
   const [activeTab, setActiveTab] = useState<'HUNKS' | 'SECTIONS' | 'RECOMMENDATIONS' | 'RAW'>('HUNKS');
   const [copied, setCopied] = useState(false);
+  const [showManualVerify, setShowManualVerify] = useState(false);
 
   const [loadingStep, setLoadingStep] = useState<string>('Resolving source URL...');
 
@@ -114,6 +116,7 @@ export const SourceDiffViewer: React.FC<SourceDiffViewerProps> = ({ regulation, 
   const verificationScore = diffData?.verification_score ?? regulation.source_url_verification_score ?? 0.0;
 
   return (
+    <>
     <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-5xl w-full my-auto p-5 sm:p-6 space-y-5 shadow-2xl relative max-h-[92vh] flex flex-col">
         {/* Header */}
@@ -302,8 +305,29 @@ export const SourceDiffViewer: React.FC<SourceDiffViewerProps> = ({ regulation, 
                 Target Source: {regulation.resolved_source_url || regulation.source_url || 'Official Portal'}
               </span>
             </div>
+          ) : diffData?.fetch_status === 'SOURCE_URL_UNRESOLVED' ? (
+            <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 space-y-4 text-sm">
+              <div className="flex items-center space-x-2">
+                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+                <h3 className="font-bold text-white">Source Unresolved</h3>
+              </div>
+              <p className="leading-relaxed">
+                Official source could not be resolved automatically. Human verification required.
+              </p>
+              <div className="p-3 rounded-xl bg-slate-950 font-mono text-[11px] text-amber-200 border border-amber-500/20">
+                Reason: {diffData.error || 'Identity could not be established.'}
+              </div>
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <button
+                  onClick={() => setShowManualVerify(true)}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl border border-amber-400/30 flex items-center gap-2 transition-colors"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Provide Official Source</span>
+                </button>
+              </div>
+            </div>
           ) : error ? (
-
             <div className="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 space-y-4 text-xs">
               <div className="flex items-center space-x-2">
                 <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
@@ -578,5 +602,17 @@ export const SourceDiffViewer: React.FC<SourceDiffViewerProps> = ({ regulation, 
         </div>
       </div>
     </div>
+    
+    {showManualVerify && (
+      <HumanSourceVerificationModal
+        regulation={regulation}
+        onClose={() => setShowManualVerify(false)}
+        onVerified={() => {
+          setShowManualVerify(false);
+          fetchDiffData(true);
+        }}
+      />
+    )}
+    </>
   );
 };

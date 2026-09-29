@@ -39,7 +39,11 @@ class ApplicabilityEngine:
         STRENGTH_RANKS = {"UNKNOWN": 0, "INFERRED": 1, "ATTESTED": 2, "DOCUMENTED": 3, "AUTHORITATIVE": 4}
 
         org_facts = {}
-        for f in db_session.query(DiscoveredFact).filter_by(organization_id=organization_id).all():
+        # Only CONFIRMED facts are authoritative applicability evidence; REJECTED and PENDING are excluded
+        for f in db_session.query(DiscoveredFact).filter(
+            DiscoveredFact.organization_id == organization_id,
+            DiscoveredFact.status == "CONFIRMED"
+        ).all():
             org_facts.setdefault(f.fact_type, []).append(f)
 
         # Build combined fact context mapping
@@ -60,7 +64,8 @@ class ApplicabilityEngine:
                 org_values_by_type.setdefault(f_type, []).append((f.fact_value, f.known_state, f.source_url, strength))
 
         assessments = []
-        regulations = db_session.query(Regulation).filter(Regulation.status != "DRAFT").all()
+        # Only ACTIVE / PUBLISHED regulations are eligible for evaluation (excluding DRAFT, ARCHIVED, SUPERSEDED, INACTIVE)
+        regulations = db_session.query(Regulation).filter(Regulation.status.in_(["ACTIVE", "PUBLISHED"])).all()
 
         for reg in regulations:
             try:
@@ -108,7 +113,8 @@ class ApplicabilityEngine:
         regulatory_signals = db_session.query(DiscoveredFact).filter(
             DiscoveredFact.organization_id == profile.id,
             DiscoveredFact.fact_type == "REGULATORY_SIGNAL",
-            DiscoveredFact.known_state != "FALSE"
+            DiscoveredFact.known_state != "FALSE",
+            DiscoveredFact.status != "REJECTED"
         ).all()
 
         criteria = regulation.applicability_criteria
@@ -162,47 +168,75 @@ class ApplicabilityEngine:
             if not sufficient_facts:
                 return "UNKNOWN", f"Evidence found but insufficient strength (requires {getattr(crit, 'minimum_evidence_strength', 'DOCUMENTED')}).", None
             
-            for val, state, source in sufficient_facts:
-                if state == "UNKNOWN":
-                    continue 
-                    
-                val_lower = val.lower() if isinstance(val, str) else str(val).lower()
-                
+            # Deterministic sorting so row/database insertion order never determines the result
+            sorted_facts = sorted(sufficient_facts, key=lambda x: (str(x[0]), str(x[1]), str(x[2])))
+
+            def _value_matches(val_str: str) -> bool:
+                val_lower = val_str.lower()
                 if operator in (">", ">=", "<", "<=", "==", "!="):
                     try:
-                        v_num = float(val)
+                        v_num = float(val_str)
                         e_num = float(expected)
-                        if operator == ">" and v_num > e_num: return "SATISFIED", f"{fact_type} {v_num} > {e_num}", source
-                        if operator == ">=" and v_num >= e_num: return "SATISFIED", f"{fact_type} {v_num} >= {e_num}", source
-                        if operator == "<" and v_num < e_num: return "SATISFIED", f"{fact_type} {v_num} < {e_num}", source
-                        if operator == "<=" and v_num <= e_num: return "SATISFIED", f"{fact_type} {v_num} <= {e_num}", source
-                        if operator == "==" and v_num == e_num: return "SATISFIED", f"{fact_type} {v_num} == {e_num}", source
-                        if operator == "!=" and v_num != e_num: return "SATISFIED", f"{fact_type} {v_num} != {e_num}", source
+                        if operator == ">": return v_num > e_num
+                        if operator == ">=": return v_num >= e_num
+                        if operator == "<": return v_num < e_num
+                        if operator == "<=": return v_num <= e_num
+                        if operator == "==": return v_num == e_num
+                        if operator == "!=": return v_num != e_num
                     except ValueError:
-                        pass
-                        
-                if operator == "CONTAINS":
-                    if expected in val_lower:
-                        if state == "FALSE":
-                            return "NOT_SATISFIED", f"Explicitly verified: does not do '{expected}'", source
-                        return "SATISFIED", f"Matches '{expected}'", source
+                        return False
+                elif operator == "CONTAINS":
+                    return expected in val_lower
                 elif operator == "EQUALS":
-                    if val_lower == expected:
-                        if state == "FALSE":
-                            return "NOT_SATISFIED", f"Explicitly verified: does not match '{expected}'", source
-                        return "SATISFIED", f"Equals '{expected}'", source
+                    return val_lower == expected
                 elif operator == "IN":
                     exp_list = [x.strip() for x in expected.split(',')]
-                    if val_lower in exp_list:
-                        if state == "FALSE":
-                            return "NOT_SATISFIED", f"Explicitly verified: not in {exp_list}", source
-                        return "SATISFIED", f"Found in {exp_list}", source
+                    return val_lower in exp_list
+                return False
 
-            for val, state, source in sufficient_facts:
-                val_lower = val.lower() if isinstance(val, str) else str(val).lower()
-                if state == "FALSE" and (operator == "CONTAINS" and expected in val_lower):
-                    return "NOT_SATISFIED", f"Explicitly verified false for '{expected}'", source
-                    
+            matching_true = []
+            matching_false = []
+            for val, state, source in sorted_facts:
+                if state == "UNKNOWN":
+                    continue
+                if _value_matches(str(val)):
+                    if state == "TRUE":
+                        matching_true.append((val, source))
+                    elif state == "FALSE":
+                        matching_false.append((val, source))
+
+            # Contradictory TRUE and FALSE evidence detected
+            if matching_true and matching_false:
+                sources = sorted(list({src for _, src in (matching_true + matching_false) if src}))
+                combined_source = ", ".join(sources) if sources else None
+                return "CONFLICTING_EVIDENCE", f"Conflicting evidence found: contradictory TRUE and FALSE facts exist for '{expected}'.", combined_source
+
+            if matching_true:
+                val, source = matching_true[0]
+                if operator in (">", ">=", "<", "<=", "==", "!="):
+                    msg = f"{fact_type} {val} {operator} {expected}"
+                elif operator == "CONTAINS":
+                    msg = f"Matches '{expected}'"
+                elif operator == "EQUALS":
+                    msg = f"Equals '{expected}'"
+                elif operator == "IN":
+                    msg = f"Found in {[x.strip() for x in expected.split(',')]}"
+                else:
+                    msg = f"Satisfied '{expected}'"
+                return "SATISFIED", msg, source
+
+            if matching_false:
+                val, source = matching_false[0]
+                if operator == "CONTAINS":
+                    msg = f"Explicitly verified: does not do '{expected}'"
+                elif operator == "EQUALS":
+                    msg = f"Explicitly verified: does not match '{expected}'"
+                elif operator == "IN":
+                    msg = f"Explicitly verified: not in {[x.strip() for x in expected.split(',')]}"
+                else:
+                    msg = f"Explicitly verified false for '{expected}'"
+                return "NOT_SATISFIED", msg, source
+
             return "UNKNOWN", f"No definitive fact found matching '{expected}' via operator {operator}.", None
 
         eval_results = {}
@@ -228,14 +262,18 @@ class ApplicabilityEngine:
             op = data["operator"]
             statuses = [c["status"] for c in data["criteria"]]
             if op == "OR":
-                if "SATISFIED" in statuses:
+                if "CONFLICTING_EVIDENCE" in statuses:
+                    final_group_statuses[grp] = "CONFLICTING_EVIDENCE"
+                elif "SATISFIED" in statuses:
                     final_group_statuses[grp] = "SATISFIED"
                 elif all(s == "NOT_SATISFIED" for s in statuses):
                     final_group_statuses[grp] = "NOT_SATISFIED"
                 else:
                     final_group_statuses[grp] = "UNKNOWN"
             elif op == "AND":
-                if "NOT_SATISFIED" in statuses:
+                if "CONFLICTING_EVIDENCE" in statuses:
+                    final_group_statuses[grp] = "CONFLICTING_EVIDENCE"
+                elif "NOT_SATISFIED" in statuses:
                     final_group_statuses[grp] = "NOT_SATISFIED"
                 elif "UNKNOWN" in statuses:
                     final_group_statuses[grp] = "UNKNOWN"
@@ -276,19 +314,20 @@ class ApplicabilityEngine:
                             "authoritative_source": crit.provenance_reference,
                             "is_mandatory": getattr(crit, "is_mandatory", 1)
                         })
-                elif status == "UNKNOWN":
-                    # Only require review if the group is UNKNOWN
-                    if grp_status == "UNKNOWN":
+                elif status in ("UNKNOWN", "CONFLICTING_EVIDENCE"):
+                    # Only require review if the group is UNKNOWN or CONFLICTING_EVIDENCE
+                    if grp_status in ("UNKNOWN", "CONFLICTING_EVIDENCE"):
+                        is_conflict = (status == "CONFLICTING_EVIDENCE")
                         missing_information.append({
                             "criterion_id": crit.id,
                             "criterion": crit.criterion_type,
-                            "status": "MISSING_EVIDENCE",
+                            "status": "CONFLICTING_EVIDENCE" if is_conflict else "MISSING_EVIDENCE",
                             "required_fact": crit.evidence_fact_type,
-                            "question": f"Is condition '{crit.operator} {crit.expected_value}' met for {crit.evidence_fact_type}?",
+                            "question": f"Resolve conflicting evidence for condition '{crit.operator} {crit.expected_value}' on {crit.evidence_fact_type}." if is_conflict else f"Is condition '{crit.operator} {crit.expected_value}' met for {crit.evidence_fact_type}?",
                             "reason": msg,
                             "is_mandatory": getattr(crit, "is_mandatory", 1),
                             "minimum_evidence_strength": getattr(crit, "minimum_evidence_strength", "DOCUMENTED"),
-                            "evidence_required": f"Provide {getattr(crit, 'minimum_evidence_strength', 'DOCUMENTED')} evidence for '{crit.expected_value}'."
+                            "evidence_required": f"Provide authoritative resolution between conflicting facts for '{crit.expected_value}'." if is_conflict else f"Provide {getattr(crit, 'minimum_evidence_strength', 'DOCUMENTED')} evidence for '{crit.expected_value}'."
                         })
 
         overall_statuses = list(final_group_statuses.values())
@@ -296,6 +335,17 @@ class ApplicabilityEngine:
             final_status = "NOT_APPLICABLE"
             score = 0.0
             rationale_lines = [f"No criteria defined for {regulation.id}."]
+        elif "CONFLICTING_EVIDENCE" in overall_statuses:
+            final_status = "REQUIRES_REVIEW"
+            score = 0.50
+            rationale_lines = [f"Regulatory applicability **REQUIRES REVIEW** for {profile.organization_name} due to conflicting evidence:"]
+            for m in missing_information:
+                if m.get("status") == "CONFLICTING_EVIDENCE":
+                    rationale_lines.append(f"- **{m['criterion']}**: {m['reason']}")
+            if signal_refs:
+                rationale_lines.append("\n**Discovered Regulatory Signals:**")
+                for s in signal_refs:
+                    rationale_lines.append(f"- Discovered '{s['signal_name']}' on corporate website (Evidence: *\"{s['evidence_quote']}\"*).")
         elif "NOT_SATISFIED" in overall_statuses:
             final_status = "NOT_APPLICABLE"
             score = 0.0
@@ -391,7 +441,7 @@ class ApplicabilityEngine:
         
         for m in missing:
             crit_id = m.get("criterion_id")
-            if not crit_id or crit_id == "missing": continue
+            if not crit_id: continue
             if crit_id in existing_by_criterion:
                 item = existing_by_criterion[crit_id]
                 item.assessment_id = assessment.id

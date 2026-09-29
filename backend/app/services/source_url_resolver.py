@@ -181,43 +181,39 @@ def resolve_source_url(
 
     # Priority 1: Match doc_number in link text or href
     if doc_num_clean:
+        # Require substantial match, e.g., the specific reference number like "203" or "RBI/2026-27"
+        important_parts = [p for p in doc_parts if len(p) >= 3 and p not in ('circular', 'series', 'no.', 'no')]
         for text, href in links:
             if doc_num_clean in text.lower() or doc_num_clean in href.lower():
                 best_match_url = href
-                reason = f"Matched doc_number '{doc_number}' in index row link"
+                reason = f"Matched exact doc_number '{doc_number}' in index row link"
                 break
-            # Match doc parts if specific (e.g. "circular no. 19" or "203")
-            if len(doc_parts) >= 2 and all(part in text.lower() for part in doc_parts[-2:]):
-                best_match_url = href
-                reason = f"Matched doc_number parts '{doc_parts[-2:]}' in index row link"
-                break
+            # Stricter partial match
+            if len(important_parts) >= 2:
+                # Require at least 2 distinct important parts to match
+                matches = sum(1 for p in important_parts if p in text.lower())
+                if matches >= 2:
+                    best_match_url = href
+                    reason = f"Matched doc_number parts {important_parts} in index row link"
+                    break
 
     # Priority 2: Match title keywords if doc_number failed
     if not best_match_url and title_clean:
         title_keywords = [
             w for w in re.split(r"\W+", title_clean)
-            if len(w) >= 3 and w not in {
+            if len(w) >= 4 and w not in {
                 "master", "direction", "circular", "amendment", "guidelines",
-                "flagged", "scan", "notification", "index", "rules"
+                "flagged", "scan", "notification", "index", "rules", "accounts"
             }
         ]
-        if title_keywords:
-            min_matches = max(1, min(2, len(title_keywords)))
+        if len(title_keywords) >= 2:
+            min_matches = max(2, int(len(title_keywords) * 0.7)) # Require 70% or at least 2 distinct words
             for text, href in links:
-                matched_kws = [kw for kw in title_keywords if kw in text.lower() or kw in href.lower()]
+                matched_kws = [kw for kw in title_keywords if kw in text.lower()]
                 if len(matched_kws) >= min_matches:
                     best_match_url = href
                     reason = f"Matched title keywords {matched_kws} in index link '{text[:40]}...'"
                     break
-
-
-    # Priority 3: First PDF/document link on page if index has single target PDF
-    if not best_match_url:
-        for text, href in links:
-            if href.lower().endswith(".pdf") or "/pdf" in href.lower():
-                best_match_url = href
-                reason = "Resolved to first document PDF link on index page"
-                break
 
     if best_match_url:
         expires_at = now + datetime.timedelta(hours=CACHE_TTL_HOURS)
@@ -225,4 +221,4 @@ def resolve_source_url(
         logger.info("Successfully resolved index URL %s -> %s (%s)", original_url, best_match_url, reason)
         return best_match_url, True, reason
 
-    return original_url, True, "No matching regulation document found on index page. Fallback to original."
+    return None, True, "Multiple official documents found but exact circular match could not be established."

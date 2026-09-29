@@ -103,11 +103,13 @@ def get_compliance_alert(
     """
     Retrieve single compliance alert details.
     """
-    alert = db.query(ComplianceAlert).filter(ComplianceAlert.id == alert_id).first()
+    alert = db.query(ComplianceAlert).filter(
+        ComplianceAlert.id == alert_id,
+        ComplianceAlert.organization_id == current_profile.id
+    ).first()
     if not alert:
         raise HTTPException(status_code=404, detail=f"Compliance alert {alert_id} not found")
 
-    _verify_organization_access(current_user, alert.organization_id)
     return alert
 
 @router.post("/alerts/{alert_id}/resolve", response_model=ComplianceAlertResponse)
@@ -127,6 +129,7 @@ def resolve_compliance_alert(
         alert_id=alert_id,
         current_user=current_user,
         resolution_notes=resolve_in.resolution_notes,
-        db=db
+        db=db,
+        organization_id=current_profile.id
     )
     return resolved_alert

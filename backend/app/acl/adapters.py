@@ -45,16 +45,35 @@ def _validate_url(url: str) -> None:
         try:
             resolved_ip = socket.getaddrinfo(hostname, None)[0][4][0]
             resolved_obj = ipaddress.ip_address(resolved_ip)
-            if resolved_obj.is_private or resolved_obj.is_loopback or resolved_obj.is_link_local or resolved_obj.is_reserved or resolved_obj.is_multicast:
+            # NAT64 handling: 64:ff9b::/96 is the IANA Well-Known Prefix for NAT64.
+            if isinstance(resolved_obj, ipaddress.IPv6Address) and resolved_obj in ipaddress.IPv6Network("64:ff9b::/96"):
+                # Extract the embedded IPv4 address to apply SSRF protections on the true destination
+                embedded_ipv4_bytes = resolved_obj.packed[-4:]
+                resolved_obj = ipaddress.IPv4Address(embedded_ipv4_bytes)
+
+            if (
+                resolved_obj.is_private
+                or resolved_obj.is_loopback
+                or resolved_obj.is_link_local
+                or resolved_obj.is_reserved
+                or resolved_obj.is_multicast
+            ):
                 raise ValueError(f"SSRF: hostname '{hostname}' resolves to private IP {resolved_ip}")
         except socket.gaierror:
             logger.debug("DNS resolution skipped for hostname '%s' during offline/test validation", hostname)
 
 
+class SSRFSafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """
+    Globally intercepts urllib redirects to ensure the target URL
+    is also subjected to the strict SSRF validation policy.
+    """
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        _validate_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
-
-
-
+# Install the SSRF-safe redirect handler globally for all urllib.request consumers
+urllib.request.install_opener(urllib.request.build_opener(SSRFSafeRedirectHandler))
 
 class CanonicalRegulationModel(BaseModel):
     """

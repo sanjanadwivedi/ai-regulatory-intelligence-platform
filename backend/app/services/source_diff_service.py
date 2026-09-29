@@ -66,19 +66,36 @@ def compute_source_diff(regulation: Regulation, db: Optional[Session] = None) ->
     # Resolve index URL to direct document URL if needed
     from app.services.source_url_resolver import resolve_source_url
     target_url = regulation.resolved_source_url or regulation.source_url
-    was_index = False
-    resolution_reason = ""
     try:
         resolved_url, was_index, resolution_reason = resolve_source_url(
             target_url,
             regulation.title or "",
             regulation.doc_number or ""
         )
-        if resolved_url:
-            target_url = resolved_url
-            if db and resolved_url != regulation.resolved_source_url:
-                regulation.resolved_source_url = resolved_url
-                db.commit()
+        if not resolved_url:
+            return {
+                "regulation_id": regulation.id,
+                "source_url": regulation.source_url,
+                "resolved_source_url": None,
+                "fetch_status": "SOURCE_URL_UNRESOLVED",
+                "fetch_timestamp": now_iso,
+                "stored_text": regulation.content_text or "",
+                "live_text": None,
+                "diff_type": "UNKNOWN",
+                "diff_hunks": [],
+                "semantic_sections": [],
+                "overall_drift_percentage": 0.0,
+                "verification_score": 0.0,
+                "recommendations": [
+                    "Official source could not be resolved automatically. Human verification required."
+                ],
+                "error": resolution_reason
+            }
+        
+        target_url = resolved_url
+        if db and resolved_url != regulation.resolved_source_url:
+            regulation.resolved_source_url = resolved_url
+            db.commit()
     except Exception as exc:
         logger.warning("URL resolution error in source_diff_service: %s", exc)
 

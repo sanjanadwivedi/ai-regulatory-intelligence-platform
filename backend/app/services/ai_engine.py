@@ -822,7 +822,7 @@ class RecommendationAgent:
                         if isinstance(dl, datetime.date):
                             positional_deadlines.append(dl)
 
-        default_deadline = datetime.date.today() + datetime.timedelta(days=30)
+        default_deadline = None
 
         # Pull real users from DB
         assignee_name = "Compliance Officer (Unassigned)"

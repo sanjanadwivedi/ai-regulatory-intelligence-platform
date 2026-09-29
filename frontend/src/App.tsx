@@ -16,6 +16,7 @@ import { LoginModal } from './components/common/LoginModal';
 import { LandingPage } from './components/landing/LandingPage';
 import { FloatingCopilotWidget } from './components/copilot/FloatingCopilotWidget';
 import { ComplianceIntelligenceDashboard } from './components/intelligence/ComplianceIntelligenceDashboard';
+import { RegulatoryChangeDetailWorkspace } from './components/intelligence/RegulatoryChangeDetailWorkspace';
 
 import {
   NavSection,
@@ -140,7 +141,7 @@ const VALID_NAV_SECTIONS: NavSection[] = [
   'copilot',
 ];
 
-function parseUrlRoute(): { section: NavSection; regId: string | null } {
+function parseUrlRoute(): { section: NavSection; regId: string | null; changeId: string | null } {
   let pathname = window.location.pathname.replace(/^\/+|\/+$/g, '').trim();
   const hash = window.location.hash.replace(/^#\/?/, '').trim();
 
@@ -151,25 +152,39 @@ function parseUrlRoute(): { section: NavSection; regId: string | null } {
   const searchStr = window.location.search || (hash.includes('?') ? '?' + hash.split('?')[1] : '');
   const searchParams = new URLSearchParams(searchStr);
   let regId = searchParams.get('id') || searchParams.get('regId') || null;
+  let changeId = searchParams.get('changeId') || null;
 
   const segments = pathname.split('/').filter(Boolean);
-  const sectionCandidate = (segments[0] || '').toLowerCase() as NavSection;
+  let sectionCandidate = (segments[0] || '').toLowerCase() as NavSection;
+  
+  if (sectionCandidate as string === 'regulatory-intelligence') {
+    sectionCandidate = 'intelligence';
+  }
 
   if (VALID_NAV_SECTIONS.includes(sectionCandidate)) {
     if (sectionCandidate === 'repository' && segments[1] && !regId) {
       regId = decodeURIComponent(segments[1]);
     }
-    return { section: sectionCandidate, regId };
+    if (sectionCandidate === 'intelligence' && segments[1] === 'changes' && segments[2] && !changeId) {
+      changeId = decodeURIComponent(segments[2]);
+    }
+    return { section: sectionCandidate, regId, changeId };
   }
 
-  return { section: 'landing', regId: null };
+  return { section: 'landing', regId: null, changeId: null };
 }
 
-function computeUrlPath(section: NavSection, regId: string | null): string {
+function computeUrlPath(section: NavSection, regId: string | null, changeId: string | null = null): string {
   if (section === 'landing') return '/';
   if (section === 'organization-discovery') return '/organization-discovery';
   if (section === 'repository' && regId) {
     return `/repository?id=${encodeURIComponent(regId)}`;
+  }
+  if (section === 'intelligence') {
+    if (changeId) {
+      return `/regulatory-intelligence/changes/${encodeURIComponent(changeId)}`;
+    }
+    return '/regulatory-intelligence';
   }
   return `/${section}`;
 }
@@ -178,21 +193,23 @@ export function App() {
   const initialRoute = parseUrlRoute();
   const [activeSection, setActiveSection] = useState<NavSection>(initialRoute.section);
   const [selectedRegId, setSelectedRegId] = useState<string | null>(initialRoute.regId);
+  const [selectedChangeId, setSelectedChangeId] = useState<string | null>(initialRoute.changeId);
 
   // Central navigation dispatcher that updates state and browser history
   const navigateTo = useCallback(
-    (section: NavSection, regId: string | null = null, replace: boolean = false) => {
+    (section: NavSection, regId: string | null = null, replace: boolean = false, changeId: string | null = null) => {
       setActiveSection(section);
       setSelectedRegId(regId);
+      setSelectedChangeId(changeId);
 
-      const targetPath = computeUrlPath(section, regId);
+      const targetPath = computeUrlPath(section, regId, changeId);
       const currentPath = window.location.pathname + window.location.search;
 
       if (currentPath !== targetPath) {
         if (replace) {
-          window.history.replaceState({ section, regId }, '', targetPath);
+          window.history.replaceState({ section, regId, changeId }, '', targetPath);
         } else {
-          window.history.pushState({ section, regId }, '', targetPath);
+          window.history.pushState({ section, regId, changeId }, '', targetPath);
         }
       }
     },
@@ -202,18 +219,19 @@ export function App() {
   // Synchronize on browser Back / Forward (popstate)
   useEffect(() => {
     const handlePopState = () => {
-      const { section, regId } = parseUrlRoute();
+      const { section, regId, changeId } = parseUrlRoute();
       setActiveSection(section);
       setSelectedRegId(regId);
+      setSelectedChangeId(changeId);
     };
 
     window.addEventListener('popstate', handlePopState);
 
     const current = parseUrlRoute();
-    const expected = computeUrlPath(current.section, current.regId);
+    const expected = computeUrlPath(current.section, current.regId, current.changeId);
     const actual = window.location.pathname + window.location.search;
     if (actual !== expected && actual !== '/' && actual !== '') {
-      window.history.replaceState({ section: current.section, regId: current.regId }, '', expected);
+      window.history.replaceState({ section: current.section, regId: current.regId, changeId: current.changeId }, '', expected);
     }
 
     return () => window.removeEventListener('popstate', handlePopState);
@@ -349,12 +367,7 @@ export function App() {
   // ---------------------------------------------------------------------------
   // Task mutations
   // ---------------------------------------------------------------------------
-  const handleUpdateTaskStatus = async (taskId: string, newStatus: TaskStatus) => {
-    try {
-      await ServiceAPI.updateTaskStatus(taskId, newStatus);
-    } catch {
-      // Non-fatal
-    }
+  const refreshAllData = async () => {
     const [updatedTasks, updatedAnalytics, updatedAudit] = await Promise.allSettled([
       ServiceAPI.getTasks(),
       ServiceAPI.getAnalyticsOverview(),
@@ -363,6 +376,15 @@ export function App() {
     if (updatedTasks.status === 'fulfilled') setTasks(updatedTasks.value ?? []);
     if (updatedAnalytics.status === 'fulfilled') setAnalytics(updatedAnalytics.value);
     if (updatedAudit.status === 'fulfilled') setAuditLogs(updatedAudit.value ?? []);
+  };
+
+  const handleUpdateTaskStatus = async (taskId: string, newStatus: TaskStatus, notes?: string) => {
+    try {
+      await ServiceAPI.updateTaskStatus(taskId, newStatus);
+    } catch (error: any) {
+      // Non-fatal for other status updates
+    }
+    await refreshAllData();
   };
 
   const handleCreateTask = async (e: React.FormEvent) => {
@@ -614,12 +636,21 @@ export function App() {
                 tasks={tasks}
                 onUpdateStatus={handleUpdateTaskStatus}
                 onCreateTaskClick={() => setShowTaskModal(true)}
+                onRefreshTasks={refreshAllData}
               />
             )}
 
             {/* Compliance Intelligence */}
             {activeSection === 'intelligence' && (
-              <ComplianceIntelligenceDashboard />
+              selectedChangeId ? (
+                <RegulatoryChangeDetailWorkspace 
+                  changeId={selectedChangeId} 
+                  onBack={() => navigateTo('intelligence')}
+                  navigateTo={navigateTo}
+                />
+              ) : (
+                <ComplianceIntelligenceDashboard navigateTo={navigateTo} />
+              )
             )}
 
             {/* Audit & Defense */}

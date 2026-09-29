@@ -17,8 +17,14 @@ def get_analytics_overview(
 ):
     reg_count = db.query(func.count(Regulation.id)).scalar() or 0
     mapped_count = db.query(func.count(KnowledgeGraphChain.id)).scalar() or 0
-    open_tasks = db.query(func.count(ComplianceTask.id)).filter(ComplianceTask.status != "COMPLETED").scalar() or 0
-    completed_tasks = db.query(func.count(ComplianceTask.id)).filter(ComplianceTask.status == "COMPLETED").scalar() or 0
+    open_tasks = db.query(func.count(ComplianceTask.id)).filter(
+        ComplianceTask.organization_id == current_profile.id,
+        ComplianceTask.status != "COMPLETED"
+    ).scalar() or 0
+    completed_tasks = db.query(func.count(ComplianceTask.id)).filter(
+        ComplianceTask.organization_id == current_profile.id,
+        ComplianceTask.status == "COMPLETED"
+    ).scalar() or 0
     total_tasks = open_tasks + completed_tasks
 
     # Dynamic compliance score based on calibration scores & task completion ratio

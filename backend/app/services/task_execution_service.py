@@ -1,4 +1,6 @@
 import logging
+import hmac
+import hashlib
 import datetime
 from typing import List, Optional, Tuple, Dict, Any
 from sqlalchemy.orm import Session
@@ -15,6 +17,7 @@ from app.models.domain import (
     EnterpriseUser,
     AuditLog
 )
+from app.core.config import settings
 from app.schemas.schemas import (
     TaskAssignRequest,
     TaskStatusTransitionRequest,
@@ -89,19 +92,36 @@ class TaskExecutionService:
         task_id: str,
         target_status: str,
         current_user: Any,
+        current_profile: EnterpriseProfile,
         db: Session,
         reason: Optional[str] = None
     ) -> ComplianceTask:
         _verify_authorization(current_user, f"transition task status to {target_status}")
-        task = db.query(ComplianceTask).filter(ComplianceTask.id == task_id).first()
+
+        # Cross-tenant user-profile guard: the caller's user identity must belong to the same
+        # organization as the current_profile.
+        user_org_id = getattr(current_user, "organization_id", None)
+        if user_org_id and str(user_org_id) != str(current_profile.id):
+            raise HTTPException(
+                status_code=403,
+                detail="Cross-tenant status transition is not permitted."
+            )
+        task = db.query(ComplianceTask).filter(
+            ComplianceTask.id == task_id,
+            ComplianceTask.organization_id == current_profile.id
+        ).first()
         if not task:
             raise HTTPException(status_code=404, detail=f"Compliance task {task_id} not found")
-
-        _verify_organization_access(current_user, task.organization_id)
 
         old_status = task.status
         if old_status == target_status:
             return task
+
+        if target_status == "COMPLETED":
+            raise HTTPException(
+                status_code=403,
+                detail="Direct completion is prohibited. Use the four-eyes completion workflow."
+            )
 
         # Deterministic State Machine Validation
         allowed_targets = VALID_TRANSITIONS.get(old_status, set())
@@ -117,10 +137,7 @@ class TaskExecutionService:
         task.status = target_status
         task.updated_at = datetime.datetime.utcnow()
 
-        if target_status == "COMPLETED":
-            task.completed_at = datetime.datetime.utcnow()
-            task.completed_by = user_name
-        elif target_status == "REOPENED":
+        if target_status == "REOPENED":
             task.reopened_at = datetime.datetime.utcnow()
             task.reopened_by = user_name
 
@@ -152,24 +169,125 @@ class TaskExecutionService:
         return task
 
     @classmethod
+    def complete_task(
+        cls,
+        task_id: str,
+        current_user: Any,
+        current_profile: EnterpriseProfile,
+        db: Session,
+        reason: Optional[str] = None
+    ) -> ComplianceTask:
+        import hmac
+        import hashlib
+        
+        _verify_authorization(current_user, "complete compliance task")
+        
+        user_name, user_role, user_id = _get_user_info(current_user)
+
+        # 1. Tenant-scoped query
+        task = db.query(ComplianceTask).filter(
+            ComplianceTask.id == task_id,
+            ComplianceTask.organization_id == current_profile.id
+        ).first()
+
+        if not task:
+            raise HTTPException(status_code=404, detail=f"Compliance task {task_id} not found")
+
+        if task.status == "COMPLETED":
+            raise HTTPException(status_code=400, detail="Task is already completed.")
+            
+        allowed_targets = VALID_TRANSITIONS.get(task.status, set())
+        if "COMPLETED" not in allowed_targets:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid state transition from '{task.status}' to 'COMPLETED'."
+            )
+
+        # 2. Four-Eyes Authorization Gate
+        if not task.assignee_id:
+            raise HTTPException(status_code=409, detail="Task assignee identity is not mapped. Cannot be completed.")
+        
+        if str(user_id) == str(task.assignee_id):
+            raise HTTPException(status_code=403, detail="Cannot approve your own task. Four-Eyes principle violation.")
+            
+        if "COMPLIANCE" not in user_role.upper() and "ADMIN" not in user_role.upper():
+            raise HTTPException(status_code=403, detail="Reviewer is not authorized.")
+
+        # 3. Apply state changes
+        old_status = task.status
+        task.status = "COMPLETED"
+        task.updated_at = datetime.datetime.utcnow()
+        task.completed_at = datetime.datetime.utcnow()
+        task.completed_by = user_name
+        task.reviewer_id = user_id
+        
+        # 4. Cryptographic Signature (Server-side generated AFTER auth success)
+        signing_key = getattr(settings, "COMPLIANCE_SIGNING_KEY", getattr(settings, "SECRET_KEY", "fallback")).encode("utf-8")
+        payload = f"task_id={task.id}&org_id={task.organization_id}&assignee_id={task.assignee_id}&reviewer_id={task.reviewer_id}&timestamp={task.completed_at.isoformat()}".encode("utf-8")
+        task.completion_signature = hmac.new(signing_key, payload, hashlib.sha256).hexdigest()
+
+        # 5. Atomic Audit & Activity Records
+        try:
+            activity = ComplianceTaskActivity(
+                task_id=task.id,
+                organization_id=task.organization_id,
+                actor_id=user_id,
+                actor_name=user_name,
+                actor_role=user_role,
+                activity_type="STATUS_CHANGED",
+                message=f"Task securely completed via Four-Eyes approval." + (f" Reason: {reason}" if reason else ""),
+                activity_metadata={"old_status": old_status, "new_status": "COMPLETED", "reason": reason, "signature": task.completion_signature}
+            )
+            db.add(activity)
+
+            audit = AuditLog(
+                user_name=user_name,
+                user_role=user_role,
+                action=f"TASK_COMPLETED_FOUR_EYES",
+                target_type="COMPLIANCE_TASK",
+                target_id=task.id,
+                details={"previous_status": old_status, "new_status": "COMPLETED", "reason": reason, "signature": task.completion_signature}
+            )
+            db.add(audit)
+            
+            db.commit()
+            db.refresh(task)
+            return task
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to atomically complete task {task_id}: {e}")
+            raise HTTPException(status_code=500, detail="Failed to securely complete task due to internal transaction error.")
+
+    @classmethod
     def assign_task(
         cls,
         task_id: str,
         assign_in: TaskAssignRequest,
         current_user: Any,
+        current_profile: EnterpriseProfile,
         db: Session
     ) -> ComplianceTask:
         _verify_authorization(current_user, "assign compliance tasks")
-        task = db.query(ComplianceTask).filter(ComplianceTask.id == task_id).first()
+        task = db.query(ComplianceTask).filter(
+            ComplianceTask.id == task_id,
+            ComplianceTask.organization_id == current_profile.id
+        ).first()
         if not task:
             raise HTTPException(status_code=404, detail=f"Compliance task {task_id} not found")
-
-        _verify_organization_access(current_user, task.organization_id)
 
         user_name, user_role, user_id = _get_user_info(current_user)
         old_assignee = task.assignee
         old_function = task.responsible_function
 
+        if assign_in.assignee_id:
+            target_user = db.query(EnterpriseUser).filter(
+                EnterpriseUser.id == assign_in.assignee_id,
+                EnterpriseUser.organization_id == current_profile.id
+            ).first()
+            if not target_user:
+                raise HTTPException(status_code=400, detail="Target assignee not found or not in organization.")
+            task.assignee_id = target_user.id
+            
         task.assignee = assign_in.assignee
         if assign_in.responsible_function:
             task.responsible_function = assign_in.responsible_function
@@ -206,27 +324,59 @@ class TaskExecutionService:
         task_id: str,
         evidence_in: EvidenceCreate,
         current_user: Any,
+        current_profile: EnterpriseProfile,
         db: Session
     ) -> ComplianceTaskEvidence:
         _verify_authorization(current_user, "upload operational evidence")
-        task = db.query(ComplianceTask).filter(ComplianceTask.id == task_id).first()
+
+        # Cross-tenant user-profile guard: the caller's user identity must belong to the same
+        # organization as the current_profile. Prevents user_b from submitting to org_a's tasks
+        # by supplying org_a's profile object.
+        user_org_id = getattr(current_user, "organization_id", None)
+        if user_org_id and str(user_org_id) != str(current_profile.id):
+            raise HTTPException(
+                status_code=403,
+                detail="Cross-tenant evidence submission is not permitted."
+            )
+        
+        # Validation for Path Traversal and Unsafe Extensions
+        import os
+        fname = evidence_in.file_name or ""
+        if "../" in fname or "..\\" in fname or fname.startswith("/") or fname.startswith("\\"):
+            raise HTTPException(status_code=400, detail="Invalid file name: path traversal detected.")
+        
+        parts = fname.split(".")
+        if len(parts) > 2:
+            raise HTTPException(status_code=400, detail="Invalid file name: double extensions are not allowed.")
+        
+        if len(parts) == 2:
+            ext = parts[-1].lower()
+            unsafe_exts = {"exe", "bat", "sh", "php", "js", "py", "ps1", "cmd"}
+            if ext in unsafe_exts:
+                raise HTTPException(status_code=400, detail="Invalid file name: unsafe file extension.")
+
+        task = db.query(ComplianceTask).filter(
+            ComplianceTask.id == task_id,
+            ComplianceTask.organization_id == current_profile.id
+        ).first()
         if not task:
             raise HTTPException(status_code=404, detail=f"Compliance task {task_id} not found")
-
-        _verify_organization_access(current_user, task.organization_id)
 
         user_name, user_role, user_id = _get_user_info(current_user)
 
         evidence = ComplianceTaskEvidence(
             task_id=task.id,
             organization_id=task.organization_id,
+            control_id=task.control_id,
             uploaded_by=user_name,
             uploader_role=user_role,
             evidence_type=evidence_in.evidence_type.upper(),
             file_name=evidence_in.file_name,
             file_url=evidence_in.file_url,
             description=evidence_in.description,
-            evidence_date=evidence_in.evidence_date or datetime.datetime.utcnow()
+            evidence_strength=getattr(evidence_in, "evidence_strength", "UNKNOWN").upper() if getattr(evidence_in, "evidence_strength", None) else "UNKNOWN",
+            evidence_date=evidence_in.evidence_date or datetime.datetime.utcnow(),
+            valid_until=getattr(evidence_in, "valid_until", None)
         )
         db.add(evidence)
 
@@ -253,64 +403,21 @@ class TaskExecutionService:
         db.add(audit)
         db.commit()
         db.refresh(evidence)
+
+        if evidence.control_id:
+            from app.services.control_engine import ControlEngine
+            ControlEngine.evaluate_control(
+                control_id=evidence.control_id,
+                organization_id=evidence.organization_id,
+                db=db,
+                evaluated_by=user_name
+            )
+            
+            from app.services.task_engine import TaskEngine
+            TaskEngine.generate_tasks(evidence.organization_id, db)
+
         return evidence
 
-    @classmethod
-    def complete_task(
-        cls,
-        task_id: str,
-        current_user: Any,
-        db: Session,
-        complete_in: Optional[TaskCompleteRequest] = None
-    ) -> ComplianceTask:
-        _verify_authorization(current_user, "complete compliance task")
-        task = db.query(ComplianceTask).filter(ComplianceTask.id == task_id).first()
-        if not task:
-            raise HTTPException(status_code=404, detail=f"Compliance task {task_id} not found")
-
-        _verify_organization_access(current_user, task.organization_id)
-
-        if task.status == "COMPLETED":
-            return task
-
-        if task.status in {"CANCELLED", "SUPERSEDED"}:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot complete task with status '{task.status}'."
-            )
-
-        user_name, user_role, user_id = _get_user_info(current_user)
-        notes = complete_in.confirmation_notes if complete_in else None
-
-        task.status = "COMPLETED"
-        task.completed_at = datetime.datetime.utcnow()
-        task.completed_by = user_name
-        task.updated_at = datetime.datetime.utcnow()
-
-        activity = ComplianceTaskActivity(
-            task_id=task.id,
-            organization_id=task.organization_id,
-            actor_id=user_id,
-            actor_name=user_name,
-            actor_role=user_role,
-            activity_type="COMPLETED",
-            message=f"Task completed and certified by {user_name}." + (f" Notes: {notes}" if notes else ""),
-            activity_metadata={"completed_by": user_name, "completed_at": str(task.completed_at), "notes": notes}
-        )
-        db.add(activity)
-
-        audit = AuditLog(
-            user_name=user_name,
-            user_role=user_role,
-            action="TASK_COMPLETED",
-            target_type="COMPLIANCE_TASK",
-            target_id=task.id,
-            details={"completed_by": user_name, "completed_at": str(task.completed_at), "notes": notes}
-        )
-        db.add(audit)
-        db.commit()
-        db.refresh(task)
-        return task
 
     @classmethod
     def reopen_task(
@@ -318,14 +425,16 @@ class TaskExecutionService:
         task_id: str,
         reopen_in: TaskReopenRequest,
         current_user: Any,
+        current_profile: EnterpriseProfile,
         db: Session
     ) -> ComplianceTask:
         _verify_authorization(current_user, "reopen compliance task")
-        task = db.query(ComplianceTask).filter(ComplianceTask.id == task_id).first()
+        task = db.query(ComplianceTask).filter(
+            ComplianceTask.id == task_id,
+            ComplianceTask.organization_id == current_profile.id
+        ).first()
         if not task:
             raise HTTPException(status_code=404, detail=f"Compliance task {task_id} not found")
-
-        _verify_organization_access(current_user, task.organization_id)
 
         if task.status != "COMPLETED":
             raise HTTPException(

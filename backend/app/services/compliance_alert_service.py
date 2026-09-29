@@ -212,7 +212,8 @@ class ComplianceAlertService:
         alert_id: str,
         current_user: Any,
         resolution_notes: str,
-        db: Session
+        db: Session,
+        organization_id: str
     ) -> ComplianceAlert:
         """
         Resolves an alert operationally.
@@ -220,11 +221,12 @@ class ComplianceAlertService:
         """
         _verify_authorization(current_user, "resolve compliance alert")
 
-        alert = db.query(ComplianceAlert).filter(ComplianceAlert.id == alert_id).first()
+        alert = db.query(ComplianceAlert).filter(
+            ComplianceAlert.id == alert_id,
+            ComplianceAlert.organization_id == organization_id
+        ).first()
         if not alert:
             raise HTTPException(status_code=404, detail=f"Compliance alert {alert_id} not found")
-
-        _verify_organization_access(current_user, alert.organization_id)
 
         if alert.status == "RESOLVED":
             return alert

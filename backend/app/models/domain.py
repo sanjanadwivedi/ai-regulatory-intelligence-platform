@@ -1,6 +1,6 @@
 import uuid
 import datetime
-from sqlalchemy import Column, String, Text, Integer, Float, DateTime, Date, ForeignKey, JSON
+from sqlalchemy import Column, String, Text, Integer, Float, DateTime, Date, ForeignKey, JSON, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -53,17 +53,113 @@ class Regulation(Base):
     applicability_criteria = relationship("RegulatoryApplicabilityCriterion", back_populates="regulation", cascade="all, delete-orphan")
 
 class DocumentVersion(Base):
+    """Immutable snapshot of a regulation at a specific version.
+    Once persisted, content_text and content_hash must never be mutated.
+    A new version must be created for every content change.
+    """
     __tablename__ = "document_versions"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     regulation_id = Column(String(36), ForeignKey("regulations.id", ondelete="CASCADE"), nullable=False)
-    version_no = Column(Integer, nullable=False) # 1, 2, 3
+    version_no = Column(Integer, nullable=False)  # monotonic: 1, 2, 3...
+    # Phase 20: SHA-256(normalize(content_text))  primary idempotency key
+    content_hash = Column(String(128), nullable=True)  # nullable for backward compat with old rows
     effective_date = Column(Date, nullable=True)
     content_text = Column(Text, nullable=False)
-    diff_summary = Column(JSON, nullable=True) # Added / Modified / Removed requirements
+    diff_summary = Column(JSON, nullable=True)  # Added / Modified / Removed clauses vs prior version
+    # Provenance
+    source_url = Column(String(1024), nullable=True)       # URL that was fetched for this version
+    resolved_source_url = Column(String(1024), nullable=True)
+    ingested_at = Column(DateTime, nullable=True)          # wall-clock ingestion timestamp
+    ingestion_method = Column(String(64), nullable=True)   # MANUAL | SOURCE_FEED | RE_EXTRACTION | MIGRATION
+    previous_version_id = Column(String(36), ForeignKey("document_versions.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     regulation = relationship("Regulation", back_populates="versions")
+    # Self-referential: link to prior version in the chain
+    previous_version = relationship("DocumentVersion", remote_side=[id], foreign_keys=[previous_version_id])
+
+    __table_args__ = (
+        # Idempotency: same regulation cannot have two versions with identical content
+        UniqueConstraint("regulation_id", "content_hash", name="uq_document_version_reg_hash"),
+        Index("ix_document_versions_regulation", "regulation_id"),
+    )
+
+
+class RegulatoryChange(Base):
+    """Append-only record of every detected regulatory content change.
+    change_type is determined by SHA-256 hash comparison  never by LLM alone.
+    Once created, all fields except review_status/reviewed_* are immutable.
+    """
+    __tablename__ = "regulatory_changes"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    regulation_id = Column(String(36), ForeignKey("regulations.id", ondelete="CASCADE"), nullable=False)
+    # NULL previous_version_id means this is the first-ever ingestion (NEW)
+    previous_version_id = Column(String(36), ForeignKey("document_versions.id"), nullable=True)
+    new_version_id = Column(String(36), ForeignKey("document_versions.id", ondelete="CASCADE"), nullable=False)
+
+    # NEW | UPDATED | NO_CHANGE | SOURCE_CHANGED | EXTRACTION_CHANGED | METADATA_ONLY
+    change_type = Column(String(32), nullable=False)
+
+    detected_at = Column(DateTime, default=datetime.datetime.utcnow)
+    # "scheduler" | "manual" | "re_extract" | "source_feed" | "migration"
+    detected_by = Column(String(128), nullable=False)
+
+    # Numeric drift evidence (from difflib / source_diff_service)
+    drift_percentage = Column(Float, nullable=True)
+    verification_score = Column(Float, nullable=True)
+    content_hash_before = Column(String(128), nullable=True)   # hash of previous version
+    content_hash_after = Column(String(128), nullable=False)   # hash of new version
+    diff_hunks = Column(JSON, nullable=True)                   # clause-level diff array
+    changed_sections = Column(JSON, nullable=True)             # section-level summary
+    source_url = Column(String(1024), nullable=True)
+
+    # Human review workflow  ONLY mutable fields (DEPRECATED: Use RegulatoryChangeTenantReview instead)
+    # PENDING_REVIEW | UNDER_REVIEW | REVIEWED | DISMISSED | NO_ACTION_REQUIRED
+    review_status = Column(String(32), default="PENDING_REVIEW")
+    reviewed_at = Column(DateTime, nullable=True)
+    reviewed_by = Column(String(128), nullable=True)
+    review_notes = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    regulation = relationship("Regulation")
+    previous_version = relationship("DocumentVersion", foreign_keys=[previous_version_id])
+    new_version = relationship("DocumentVersion", foreign_keys=[new_version_id])
+
+    __table_args__ = (
+        # Idempotency: same version transition cannot produce two change records
+        UniqueConstraint(
+            "regulation_id", "previous_version_id", "new_version_id",
+            name="uq_regulatory_change"
+        ),
+        Index("ix_regulatory_changes_regulation", "regulation_id"),
+        Index("ix_regulatory_changes_type", "change_type"),
+        Index("ix_regulatory_changes_review", "review_status"),
+    )
+
+
+class RegulatoryChangeTenantReview(Base):
+    """
+    Organization-scoped review state for a regulatory change.
+    Replaces global review state to ensure strict tenant isolation.
+    """
+    __tablename__ = "regulatory_change_tenant_reviews"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    organization_id = Column(String(36), ForeignKey("enterprise_profile.id", ondelete="CASCADE"), nullable=False)
+    change_id = Column(String(36), ForeignKey("regulatory_changes.id", ondelete="CASCADE"), nullable=False)
+    
+    review_status = Column(String(32), default="REQUIRES_REVIEW") # REQUIRES_REVIEW, REVIEWED, RESOLVED
+    reviewed_at = Column(DateTime, nullable=True)
+    reviewed_by = Column(String(128), nullable=True)
+    review_notes = Column(Text, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("organization_id", "change_id", name="uq_tenant_change_review"),
+    )
+
 
 
 class RegulatoryApplicabilityCriterion(Base):
@@ -142,11 +238,20 @@ class InternalControl(Base):
     __tablename__ = "internal_controls"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    control_code = Column(String(64), unique=True, nullable=False) # e.g., "CTRL-KYC-04"
+    organization_id = Column(String(36), ForeignKey("enterprise_profile.id", ondelete="CASCADE"), nullable=False)
+    control_code = Column(String(64), nullable=False) # e.g., "CTRL-KYC-04"
     name = Column(String(256), nullable=False)
     description = Column(Text, nullable=False)
     category = Column(String(128), nullable=False)
+    status = Column(String(32), default="DRAFT") # DRAFT, GAPPED, UNDER_REVIEW, IMPLEMENTED, FAILED, RETIRED
     owner_department = Column(String(128), nullable=False)
+    implementation_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'control_code', name='uq_internal_control_org_code'),
+    )
 
 class EnterprisePolicy(Base):
     __tablename__ = "enterprise_policies"
@@ -205,13 +310,18 @@ class ComplianceTask(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     regulation_id = Column(String(36), ForeignKey("regulations.id", ondelete="CASCADE"), nullable=False)
-    organization_id = Column(String(36), ForeignKey("enterprise_profile.id", ondelete="CASCADE"), nullable=True)
+    organization_id = Column(String(36), ForeignKey("enterprise_profile.id", ondelete="CASCADE"), nullable=False)
     regulatory_obligation_id = Column(String(36), ForeignKey("regulatory_obligations.id", ondelete="CASCADE"), nullable=True)
+    control_id = Column(String(36), ForeignKey("internal_controls.id", ondelete="SET NULL"), nullable=True)
     control_code = Column(String(64), nullable=True)
+    task_type = Column(String(64), default="REMEDIATION")  # REMEDIATION, REVIEW, EVIDENCE_COLLECTION, OTHER
     title = Column(String(256), nullable=False)
     description = Column(Text, nullable=True)
     assignee = Column(String(128), nullable=False)
+    assignee_id = Column(String(36), ForeignKey("enterprise_users.id", ondelete="SET NULL"), nullable=True, index=True)
     reviewer = Column(String(128), nullable=False)
+    reviewer_id = Column(String(36), ForeignKey("enterprise_users.id", ondelete="SET NULL"), nullable=True, index=True)
+    completion_signature = Column(String(256), nullable=True)
     priority = Column(String(32), default="HIGH")
     status = Column(String(64), default="OPEN") # OPEN, IN_PROGRESS, BLOCKED, COMPLETED, REOPENED, NEEDS_REVIEW, MY_TASKS, WAITING_APPROVAL, DUE_TODAY, CANCELLED, SUPERSEDED
     due_date = Column(Date, nullable=True)
@@ -235,11 +345,10 @@ class ComplianceTask(Base):
     engine_version = Column(String(32), default="v1.0.0-deterministic")
     legal_signoff_by = Column(String(128), nullable=True)
     executive_approval_by = Column(String(128), nullable=True)
-    digital_signature_hash = Column(String(128), nullable=True)
+    digital_signature_hash = Column(String(256), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
-    # Relationships
     comments = relationship("TaskComment", back_populates="task", cascade="all, delete-orphan")
     evidence_items = relationship("ComplianceTaskEvidence", back_populates="task", cascade="all, delete-orphan")
     activities = relationship("ComplianceTaskActivity", back_populates="task", cascade="all, delete-orphan")
@@ -265,13 +374,17 @@ class ComplianceTaskEvidence(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     task_id = Column(String(36), ForeignKey("compliance_tasks.id", ondelete="CASCADE"), nullable=False)
     organization_id = Column(String(36), ForeignKey("enterprise_profile.id", ondelete="CASCADE"), nullable=True)
+    control_id = Column(String(36), ForeignKey("internal_controls.id", ondelete="SET NULL"), nullable=True)
     uploaded_by = Column(String(128), nullable=False)
     uploader_role = Column(String(64), nullable=False)
     evidence_type = Column(String(64), nullable=False)  # DOCUMENT, SCREENSHOT, LOG, REPORT, POLICY, CERTIFICATE, INCIDENT_RECORD, OTHER
+    evidence_strength = Column(String(32), default="UNKNOWN") # AUTHORITATIVE, DOCUMENTED, ATTESTED, INFERRED, UNKNOWN
     file_name = Column(String(256), nullable=False)
     file_url = Column(String(1024), nullable=True)
     description = Column(Text, nullable=True)
     evidence_date = Column(DateTime, default=datetime.datetime.utcnow)
+    valid_until = Column(DateTime, nullable=True)
+    status = Column(String(32), default="ACTIVE") # ACTIVE, SUPERSEDED, EXPIRED, REJECTED
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
@@ -449,18 +562,14 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
+    organization_id = Column(String(36), ForeignKey("enterprise_profile.id", ondelete="CASCADE"), nullable=True)
     user_name = Column(String(128), nullable=False)
     user_role = Column(String(64), nullable=False)
-    action = Column(String(128), nullable=False)
+    action = Column(String(64), nullable=False)
     target_type = Column(String(64), nullable=False)
-    target_id = Column(String(36), nullable=True)
+    target_id = Column(String(36), nullable=False)
     details = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-
-
-# ==========================================
-# 7. REGULATORY APPLICABILITY DOMAIN
-# ==========================================
 
 class RegulatoryApplicabilityAssessment(Base):
     """
@@ -665,3 +774,129 @@ class ComplianceEvidenceManifest(Base):
     # Relationships
     defense_pack = relationship("ComplianceDefensePack", back_populates="evidence_manifests")
 
+
+class ObligationControlMapping(Base):
+    __tablename__ = "obligation_control_mappings"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    organization_id = Column(String(36), ForeignKey("enterprise_profile.id", ondelete="CASCADE"), nullable=False)
+    obligation_id = Column(String(36), ForeignKey("regulatory_obligations.id", ondelete="CASCADE"), nullable=False)
+    control_id = Column(String(36), ForeignKey("internal_controls.id", ondelete="CASCADE"), nullable=False)
+    rationale = Column(Text, nullable=True)
+    mapping_source = Column(String(64), default="MANUAL")
+    active = Column(Integer, default=1)  # 1 for active, 0 for inactive
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_by = Column(String(128), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'obligation_id', 'control_id', name='uq_obligation_control_mapping'),
+    )
+
+class ControlAssessment(Base):
+    __tablename__ = "control_assessments"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    organization_id = Column(String(36), ForeignKey("enterprise_profile.id", ondelete="CASCADE"), nullable=False)
+    control_id = Column(String(36), ForeignKey("internal_controls.id", ondelete="CASCADE"), nullable=False)
+    assessment_status = Column(String(64), nullable=False) # EFFECTIVE, INEFFECTIVE, CONTROL_GAP, CONTROL_REVIEW_REQUIRED
+    control_state = Column(String(64), nullable=False)     # DRAFT, PLANNED, IMPLEMENTED, UNDER_REVIEW, EFFECTIVE, INEFFECTIVE, RETIRED
+    evidence_summary = Column(String(64), nullable=False)  # NO_EVIDENCE, EVIDENCE_PRESENT, EVIDENCE_INSUFFICIENT, EVIDENCE_AUTHORITATIVE
+    missing_information = Column(JSON, nullable=True)
+    evaluated_at = Column(DateTime, default=datetime.datetime.utcnow)
+    evaluated_by = Column(String(128), nullable=False)
+    engine_version = Column(String(32), default="v1.0.0-deterministic")
+
+    control = relationship("InternalControl")
+
+class ObligationPosture(Base):
+    __tablename__ = "obligation_posture"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    organization_id = Column(String(36), ForeignKey("enterprise_profile.id", ondelete="CASCADE"), nullable=False)
+    obligation_id = Column(String(36), ForeignKey("regulatory_obligations.id", ondelete="CASCADE"), nullable=False)
+    posture_status = Column(String(64), nullable=False) # SATISFIED, CONTROL_GAP, CONTROL_REVIEW_REQUIRED
+    control_count = Column(Integer, default=0)
+    effective_control_count = Column(Integer, default=0)
+    control_gap_count = Column(Integer, default=0)
+    review_required_count = Column(Integer, default=0)
+    missing_information = Column(JSON, nullable=True)
+    evaluated_at = Column(DateTime, default=datetime.datetime.utcnow)
+    evaluated_by = Column(String(128), nullable=False)
+    engine_version = Column(String(32), default="v1.0.0-posture")
+
+    organization = relationship("EnterpriseProfile")
+    obligation = relationship("RegulatoryObligation")
+
+
+class RegulationPosture(Base):
+    __tablename__ = "regulation_posture"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    organization_id = Column(String(36), ForeignKey("enterprise_profile.id", ondelete="CASCADE"), nullable=False)
+    regulation_id = Column(String(36), ForeignKey("regulations.id", ondelete="CASCADE"), nullable=False)
+    posture_status = Column(String(64), nullable=False) # SATISFIED, CONTROL_GAP, CONTROL_REVIEW_REQUIRED, NO_APPLICABLE_REQUIREMENTS
+    applicable_obligation_count = Column(Integer, default=0)
+    satisfied_obligation_count = Column(Integer, default=0)
+    control_gap_count = Column(Integer, default=0)
+    review_required_count = Column(Integer, default=0)
+    missing_information = Column(JSON, nullable=True)
+    evaluated_at = Column(DateTime, default=datetime.datetime.utcnow)
+    evaluated_by = Column(String(128), nullable=False)
+    engine_version = Column(String(32), default="v1.0.0-posture")
+
+    organization = relationship("EnterpriseProfile")
+    regulation = relationship("Regulation")
+
+class OrganizationCompliancePosture(Base):
+    __tablename__ = "organization_compliance_posture"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    organization_id = Column(String(36), ForeignKey("enterprise_profile.id", ondelete="CASCADE"), nullable=False)
+    posture_status = Column(String(64), nullable=False) # SATISFIED, CONTROL_GAP, CONTROL_REVIEW_REQUIRED, NO_APPLICABLE_REQUIREMENTS
+    applicable_regulation_count = Column(Integer, default=0)
+    satisfied_regulation_count = Column(Integer, default=0)
+    control_gap_regulation_count = Column(Integer, default=0)
+    review_required_regulation_count = Column(Integer, default=0)
+    total_applicable_obligations = Column(Integer, default=0)
+    satisfied_obligations = Column(Integer, default=0)
+    control_gap_obligations = Column(Integer, default=0)
+    review_required_obligations = Column(Integer, default=0)
+    effective_controls = Column(Integer, default=0)
+    ineffective_controls = Column(Integer, default=0)
+    controls_requiring_review = Column(Integer, default=0)
+    compliance_percentage = Column(Float, nullable=True)
+    missing_information = Column(JSON, nullable=True)
+    evaluated_at = Column(DateTime, default=datetime.datetime.utcnow)
+    evaluated_by = Column(String(128), nullable=False)
+    engine_version = Column(String(32), default="v1.0.0-posture")
+
+    organization = relationship("EnterpriseProfile")
+
+class RegulatoryObligationImpact(Base):
+    """
+    Deterministic mapping of a regulatory change to a specific tenant obligation.
+    Never alters the actual operational status of the obligation itself.
+    """
+    __tablename__ = "regulatory_obligation_impacts"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    organization_id = Column(String(36), ForeignKey("enterprise_profile.id", ondelete="CASCADE"), nullable=False)
+    regulatory_change_id = Column(String(36), ForeignKey("regulatory_changes.id", ondelete="CASCADE"), nullable=False)
+    obligation_id = Column(String(36), ForeignKey("regulatory_obligations.id", ondelete="CASCADE"), nullable=False)
+    
+    impact_status = Column(String(32), default="POTENTIALLY_AFFECTED") # POTENTIALLY_AFFECTED, REQUIRES_HUMAN_REVIEW, DIRECTLY_AFFECTED, NOT_AFFECTED
+    review_status = Column(String(32), default="REQUIRES_REVIEW") # REQUIRES_REVIEW, ACKNOWLEDGED, RESOLVED
+    
+    reason = Column(Text, nullable=True)
+    reviewed_by = Column(String(128), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "regulatory_change_id", "obligation_id",
+            name="uq_tenant_change_obligation_impact"
+        ),
+    )

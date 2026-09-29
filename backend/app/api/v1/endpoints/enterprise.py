@@ -41,13 +41,18 @@ class EnterpriseProfileOut(BaseModel):
     class Config:
         from_attributes = True
 
-@router.get("/profile", response_model=EnterpriseProfileOut)
+from typing import Union, Dict, Any
+@router.get("/profile", response_model=Union[EnterpriseProfileOut, Dict[str, Any]])
 def get_profile(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user),
-    current_profile: EnterpriseProfile = Depends(get_current_organization)
+    current_user = Depends(get_current_user)
 ):
-    profile = current_profile
+    from app.core.security import get_current_organization_optional
+    profile = get_current_organization_optional.__wrapped__(current_user, db) if hasattr(get_current_organization_optional, '__wrapped__') else get_current_organization_optional(current_user, db)
+    
+    if not profile:
+        return {"onboarding_required": True, "message": "User is not mapped to any organization. Please start discovery."}
+        
     return profile
 
 @router.post("/profile", response_model=EnterpriseProfileOut)
@@ -106,20 +111,34 @@ class UserOut(BaseModel):
 from app.models.domain import EnterpriseUser
 
 @router.get("/users", response_model=List[UserOut])
-def list_users(db: Session = Depends(get_db)):
-    return db.query(EnterpriseUser).order_by(EnterpriseUser.created_at).all()
+def list_users(
+    db: Session = Depends(get_db),
+    current_profile: EnterpriseProfile = Depends(get_current_organization)
+):
+    return db.query(EnterpriseUser).filter(EnterpriseUser.organization_id == current_profile.id).order_by(EnterpriseUser.created_at).all()
 
 @router.post("/users", response_model=UserOut)
-def create_user(user_in: UserIn, db: Session = Depends(get_db)):
+def create_user(
+    user_in: UserIn, 
+    db: Session = Depends(get_db),
+    current_user: EnterpriseUser = Depends(require_roles(["ADMIN"])),
+    current_profile: EnterpriseProfile = Depends(get_current_organization)
+):
     user = EnterpriseUser(**user_in.model_dump())
+    user.organization_id = current_profile.id
     db.add(user)
     db.commit()
     db.refresh(user)
     return user
 
 @router.delete("/users/{user_id}", response_model=dict)
-def delete_user(user_id: str, db: Session = Depends(get_db)):
-    user = db.query(EnterpriseUser).filter(EnterpriseUser.id == user_id).first()
+def delete_user(
+    user_id: str, 
+    db: Session = Depends(get_db),
+    current_user: EnterpriseUser = Depends(require_roles(["ADMIN"])),
+    current_profile: EnterpriseProfile = Depends(get_current_organization)
+):
+    user = db.query(EnterpriseUser).filter(EnterpriseUser.id == user_id, EnterpriseUser.organization_id == current_profile.id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     db.delete(user)

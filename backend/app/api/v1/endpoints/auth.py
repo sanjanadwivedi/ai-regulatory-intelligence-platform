@@ -62,7 +62,7 @@ def login(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,  # Set to True in HTTPS production
+        secure=(settings.ENVIRONMENT == "production"),
         samesite="lax",
         max_age=60 * 60 * 24
     )
@@ -112,7 +112,7 @@ def register(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,
+        secure=(settings.ENVIRONMENT == "production"),
         samesite="lax",
         max_age=60 * 60 * 24
     )

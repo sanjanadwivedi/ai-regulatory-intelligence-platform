@@ -158,9 +158,31 @@ export const ApplicabilityAssessmentCard: React.FC<ApplicabilityAssessmentCardPr
             <AlertTriangle className="w-4 h-4" />
             Human Review Required & Missing Determination
           </div>
-          <ul className="space-y-1 text-xs text-slate-300 list-disc list-inside">
+          <ul className="space-y-2 text-xs text-slate-300">
             {assessment.missing_information.map((item, idx) => (
-              <li key={idx} className="leading-relaxed">{item}</li>
+              <li key={item.criterion_id || idx} className="leading-relaxed bg-amber-950/30 p-3 rounded-xl border border-amber-500/20 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="font-semibold text-amber-300">{item.criterion || 'Pending Criterion'}</div>
+                  {item.is_mandatory && (
+                    <span className="text-[10px] text-amber-200 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">MANDATORY</span>
+                  )}
+                </div>
+                {item.question && (
+                  <p className="text-slate-300">
+                    <span className="text-amber-500/70 font-medium">Question:</span> {item.question}
+                  </p>
+                )}
+                {item.reason && (
+                  <p className="text-slate-400 italic">
+                    {item.reason}
+                  </p>
+                )}
+                {item.evidence_required && (
+                  <p className="text-[11px] text-slate-400">
+                    <span className="text-slate-500">Evidence Required:</span> {item.evidence_required}
+                  </p>
+                )}
+              </li>
             ))}
           </ul>
           <p className="text-[11px] text-amber-400/80 italic pt-1">

@@ -1,4 +1,8 @@
 import datetime
+import os
+import logging
+from typing import Optional, Dict, Any
+from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models.domain import (
     RegulatorySource, Regulation, Section, Obligation, Requirement,
@@ -6,76 +10,54 @@ from app.models.domain import (
     InternalControl, EnterprisePolicy, EnterpriseProcess, EnterpriseApplication,
     EnterpriseProfile, EnterpriseUser, RegulatoryApplicabilityCriterion
 )
+from app.core.security import get_password_hash
+
+logger = logging.getLogger("compliance_platform.seeding")
+
+PROTECTED_DATABASES = {"compliance_platform.db", "compliance_platform_browser_audit.db"}
 
 
-def seed_database_data():
-    db = SessionLocal()
+def seed_database_data(db: Optional[Any] = None, force: bool = False) -> Dict[str, Any]:
+    """
+    Idempotent, non-destructive enterprise regulatory knowledge ontology seeder.
+
+    Production Safety Invariants:
+    1. Explicit Environment Gating: When ENVIRONMENT is 'production' (or 'prod'),
+       startup demo seeding is strictly skipped unless explicitly forced.
+    2. Non-Destructive: NEVER executes DELETE operations against existing tables.
+       Preserves existing production/tenant records, organizations, users, tasks, and regulations.
+    3. Idempotent: Every entity is verified before insertion. Repeated runs add 0 duplicate rows.
+    """
+    env = os.getenv("ENVIRONMENT", settings.ENVIRONMENT).lower()
+    if env in ("production", "prod") and not force:
+        logger.info("Production environment active (ENVIRONMENT=%s). Startup demo data seeding is skipped.", env)
+        return {"status": "SKIPPED", "reason": "PRODUCTION_ENVIRONMENT"}
+
+    close_db_when_done = False
+    if db is None:
+        db = SessionLocal()
+        close_db_when_done = True
+
     try:
-        # Always ensure canonical enterprise users exist and passwords match ChangeMe!2026
-        from app.core.security import get_password_hash
-        canonical_users = [
-            {"email": "admin@aegis.com", "full_name": "System Administrator", "role": "ADMIN", "password": "ChangeMe!2026"},
-            {"email": "officer@aegis.com", "full_name": "Compliance Officer", "role": "Compliance Officer", "password": "ChangeMe!2026"},
-            {"email": "sanjana@hdfcbank.com", "full_name": "Sanjana Dwivedi", "role": "Compliance Officer", "password": "ChangeMe!2026"},
-        ]
-        for udata in canonical_users:
-            u = db.query(EnterpriseUser).filter(EnterpriseUser.email == udata["email"]).first()
-            if not u:
-                u = EnterpriseUser(
-                    full_name=udata["full_name"],
-                    role=udata["role"],
-                    email=udata["email"],
-                    hashed_password=get_password_hash(udata["password"])
-                )
-                db.add(u)
-            else:
-                u.full_name = udata["full_name"]
-                u.role = udata["role"]
-                u.hashed_password = get_password_hash(udata["password"])
-        db.commit()
+        # 1. Enterprise Profile (preserves existing, creates only if absent)
+        profile = db.query(EnterpriseProfile).filter(EnterpriseProfile.organization_name == "HDFC Bank Ltd").first()
+        if not profile:
+            profile = db.query(EnterpriseProfile).first()
 
+        if not profile:
+            profile = EnterpriseProfile(
+                id="a059be3b-8d88-42e8-989e-953e20f560d9",
+                organization_name="HDFC Bank Ltd",
+                industry_sector="Banking & Financial Services",
+                departments=["Information Security (CISO)", "Compliance & Legal", "Retail Banking", "Treasury & Forex", "Algorithmic Trading Desk"],
+                country="India",
+                regulator_region="Global / India"
+            )
+            db.add(profile)
+            db.commit()
+            db.refresh(profile)
 
-        # Check if already fully populated
-        existing_regs = db.query(Regulation).count()
-        existing_controls = db.query(InternalControl).count()
-        if existing_regs >= 5 and existing_controls >= 5:
-            pass # We still might need to fix users, so let's continue or just return. Wait, if it's fully seeded, the users might still have None organization_id!
-
-        print("Seeding Enterprise Regulatory Knowledge Ontology & Graph...")
-
-        # 0. Clear stale partial records
-        db.query(KnowledgeGraphChain).delete()
-        db.query(RegulatoryApplicabilityCriterion).delete()
-        db.query(ComplianceTask).delete()
-        db.query(Requirement).delete()
-        db.query(Obligation).delete()
-        db.query(Section).delete()
-        db.query(Regulation).delete()
-        db.query(RegulatorySource).delete()
-        db.query(InternalControl).delete()
-        db.query(EnterprisePolicy).delete()
-        db.query(EnterpriseProcess).delete()
-        db.query(EnterpriseApplication).delete()
-        
-        # We don't delete EnterpriseProfile because we might have foreign key constraints, or we DO delete it but cascade?
-        # Actually, let's keep the EnterpriseProfile delete, then create it immediately.
-        db.query(EnterpriseProfile).delete()
-        db.commit()
-
-        # Enterprise Profile
-        profile = EnterpriseProfile(
-            organization_name="HDFC Bank Ltd",
-            industry_sector="Banking & Financial Services",
-            departments=["Information Security (CISO)", "Compliance & Legal", "Retail Banking", "Treasury & Forex", "Algorithmic Trading Desk"],
-            country="India",
-            regulator_region="Global / India"
-        )
-        db.add(profile)
-        db.commit()
-        db.refresh(profile)
-
-        # Seed initial enterprise users if not present, and update existing ones
-        from app.core.security import get_password_hash
+        # 2. Canonical Enterprise Users (idempotent, preserves custom users)
         canonical_users = [
             {"email": "admin@aegis.com", "full_name": "System Administrator", "role": "ADMIN", "password": "ChangeMe!2026"},
             {"email": "officer@aegis.com", "full_name": "Compliance Officer", "role": "Compliance Officer", "password": "ChangeMe!2026"},
@@ -93,13 +75,11 @@ def seed_database_data():
                 )
                 db.add(u)
             else:
-                u.full_name = udata["full_name"]
-                u.role = udata["role"]
-                u.hashed_password = get_password_hash(udata["password"])
-                u.organization_id = profile.id
+                if not u.organization_id:
+                    u.organization_id = profile.id
         db.commit()
 
-        # 1. Sources
+        # 3. Regulatory Sources
         sources = [
             RegulatorySource(
                 id="src-rbi",
@@ -121,7 +101,6 @@ def seed_database_data():
                 sector="Capital Markets & Securities",
                 status="ACTIVE"
             ),
-
             RegulatorySource(
                 id="src-cyber",
                 authority_name="Indian Computer Emergency Response Team (CERT-In)",
@@ -143,18 +122,24 @@ def seed_database_data():
                 status="ACTIVE"
             )
         ]
-        db.add_all(sources)
+        for s in sources:
+            if not db.query(RegulatorySource).filter(RegulatorySource.id == s.id).first():
+                db.add(s)
+        db.commit()
 
-
-        # 2. Enterprise Internal Controls & Policy Mappings
+        # 4. Enterprise Internal Controls & Policy Mappings
         controls = [
-            InternalControl(id="ctrl-kyc-04", control_code="CTRL-KYC-04", name="Biometric V-CIP Liveness & Geotag Verification Control", description="Automated video customer identification with liveness detection and GPS geotag verification.", category="AML / KYC", owner_department="Retail Banking"),
-            InternalControl(id="ctrl-sec-09", control_code="CTRL-SEC-09", name="Cloud Database AES-256 Encryption & Zero-Day Patching", description="Mandatory AES-256 database column encryption and bi-weekly patch management pipeline.", category="Cybersecurity", owner_department="Information Security (CISO)"),
-            InternalControl(id="ctrl-phi-02", control_code="CTRL-PHI-02", name="Patient Record Access Audit Exporter & PHI Encryption", description="Role-based clinical data encryption and 48-hour automated patient access audit log exporter.", category="Data Privacy", owner_department="Clinical Operations"),
-            InternalControl(id="ctrl-lrs-01", control_code="CTRL-LRS-01", name="Special Rupee Vostro Account (SRVA) Cross-Border Logging", description="Real-time audit logging and regulatory reporting for Special Rupee Vostro Account transactions.", category="Forex & Remittance", owner_department="Treasury & Forex"),
-            InternalControl(id="ctrl-trad-05", control_code="CTRL-TRAD-05", name="Real-Time Algorithmic Trading Kill-Switch & Surveillance", description="Automated pre-trade risk checks, kill-switch triggers, and 7-year immutable trading log retention.", category="Capital Markets", owner_department="Algorithmic Trading Desk"),
+            InternalControl(id="ctrl-kyc-04", organization_id=profile.id, control_code="CTRL-KYC-04", name="Biometric V-CIP Liveness & Geotag Verification Control", description="Automated video customer identification with liveness detection and GPS geotag verification.", category="AML / KYC", owner_department="Retail Banking"),
+            InternalControl(id="ctrl-sec-09", organization_id=profile.id, control_code="CTRL-SEC-09", name="Cloud Database AES-256 Encryption & Zero-Day Patching", description="Mandatory AES-256 database column encryption and bi-weekly patch management pipeline.", category="Cybersecurity", owner_department="Information Security (CISO)"),
+            InternalControl(id="ctrl-phi-02", organization_id=profile.id, control_code="CTRL-PHI-02", name="Patient Record Access Audit Exporter & PHI Encryption", description="Role-based clinical data encryption and 48-hour automated patient access audit log exporter.", category="Data Privacy", owner_department="Clinical Operations"),
+            InternalControl(id="ctrl-lrs-01", organization_id=profile.id, control_code="CTRL-LRS-01", name="Special Rupee Vostro Account (SRVA) Cross-Border Logging", description="Real-time audit logging and regulatory reporting for Special Rupee Vostro Account transactions.", category="Forex & Remittance", owner_department="Treasury & Forex"),
+            InternalControl(id="ctrl-trad-05", organization_id=profile.id, control_code="CTRL-TRAD-05", name="Real-Time Algorithmic Trading Kill-Switch & Surveillance", description="Automated pre-trade risk checks, kill-switch triggers, and 7-year immutable trading log retention.", category="Capital Markets", owner_department="Algorithmic Trading Desk"),
         ]
-        db.add_all(controls)
+        for c in controls:
+            if not db.query(InternalControl).filter(InternalControl.id == c.id).first():
+                c.organization_id = profile.id
+                db.add(c)
+        db.commit()
 
         policies = [
             EnterprisePolicy(id="pol-kyc-2026", policy_code="POL-KYC-2026", title="Enterprise Customer Due Diligence & KYC Policy 2026", version="v4.2", owner_department="Retail Banking", content_summary="Governs mandatory periodic KYC re-verification, V-CIP liveness standards, and AML risk categorization."),
@@ -163,7 +148,9 @@ def seed_database_data():
             EnterprisePolicy(id="pol-lrs-2026", policy_code="POL-LRS-2026", title="Foreign Exchange Remittance & Vostro Account Operations Policy", version="v1.4", owner_department="Treasury & Forex", content_summary="Mandates geotagged audit logs and quarterly reporting for Special Rupee Vostro Accounts (SRVAs)."),
             EnterprisePolicy(id="pol-trading-2026", policy_code="POL-TRADING-2026", title="Algorithmic Trading Pre-Trade Risk & Market Integrity Standard", version="v5.0", owner_department="Algorithmic Trading Desk", content_summary="Requires automated pre-trade risk limits, circuit-breaker kill switches, and 7-year log preservation."),
         ]
-        db.add_all(policies)
+        for p in policies:
+            if not db.query(EnterprisePolicy).filter(EnterprisePolicy.id == p.id).first():
+                db.add(p)
 
         processes = [
             EnterpriseProcess(id="prc-onb-01", process_code="PRC-ONBOARDING-01", name="Digital Customer Onboarding & Re-verification Workflow", owner_department="Retail Banking"),
@@ -172,7 +159,9 @@ def seed_database_data():
             EnterpriseProcess(id="prc-vos-01", process_code="PRC-VOSTRO-AUDIT-01", name="Special Rupee Vostro Account Compliance & Audit Pipeline", owner_department="Treasury & Forex"),
             EnterpriseProcess(id="prc-algo-01", process_code="PRC-ALGO-SURVEILLANCE-01", name="Algorithmic Order Execution Risk & Kill-Switch Protocol", owner_department="Algorithmic Trading Desk"),
         ]
-        db.add_all(processes)
+        for prc in processes:
+            if not db.query(EnterpriseProcess).filter(EnterpriseProcess.id == prc.id).first():
+                db.add(prc)
 
         apps = [
             EnterpriseApplication(id="app-core-bank", app_code="APP-CORE-BANKING", name="Finacle Core Banking Platform", owner_team="Banking Core Engineering"),
@@ -181,9 +170,12 @@ def seed_database_data():
             EnterpriseApplication(id="app-forex-port", app_code="APP-FOREX-PORTAL", name="Treasury FX & Remittance Gateway", owner_team="Treasury Technology"),
             EnterpriseApplication(id="app-algo-surv", app_code="APP-ALGO-SURVEILLANCE", name="Kapa Algo Trading Surveillance Engine", owner_team="Trading Systems Group"),
         ]
-        db.add_all(apps)
+        for a in apps:
+            if not db.query(EnterpriseApplication).filter(EnterpriseApplication.id == a.id).first():
+                db.add(a)
         db.commit()
 
+        # 5. Statutory Regulations
         r_cyber = Regulation(
             id="reg-cyber-2026",
             title="CERT-In Directions under Section 70B(6) of Information Technology Act, 2000",
@@ -216,7 +208,6 @@ All service providers, intermediaries, data centres and body corporate shall con
 5. Penalties for Non-Compliance:
 Failure to furnish information or comply with directions issued by CERT-In shall be punishable under sub-section (7) of Section 70B of the Information Technology Act, 2000 with imprisonment for a term which may extend to one year or with fine which may extend to one lakh rupees or with both."""
         )
-
 
         r_health = Regulation(
             id="reg-hipaa-2026",
@@ -316,7 +307,6 @@ Regulated Entities (REs) shall carry out periodic updation of KYC at least once 
 Failure to adhere to these directions shall attract statutory enforcement under Section 47A of the Banking Regulation Act, 1949 and Section 13 of PMLA 2002."""
         )
 
-
         r_ocr_review = Regulation(
             id="reg-scan-rbi-2026",
             title="[FLAGGED SCAN] Special Rupee Vostro Accounts (SRVAs)",
@@ -357,11 +347,12 @@ To, All Authorised Dealer Category-I banks
 8. Issued under sections 10(4) and 11(1) of the Foreign Exchange Management Act (FEMA), 1999 (42 of 1999)."""
         )
 
-        db.add_all([r_cyber, r_health, r_cap, r1, r_ocr_review])
-        db.add_all([r_cyber, r_health, r_cap, r1, r_ocr_review])
+        for r in [r_cyber, r_health, r_cap, r1, r_ocr_review]:
+            if not db.query(Regulation).filter(Regulation.id == r.id).first():
+                db.add(r)
         db.commit()
 
-        # 3.5 Applicability Criteria
+        # 6. Applicability Criteria
         criteria = [
             # CERT-In (reg-cyber-2026)
             RegulatoryApplicabilityCriterion(regulation_id=r_cyber.id, criterion_type="Territorial Jurisdiction", description="Organization operates in India", operator="IN", expected_value="india,mumbai,delhi,bengaluru,chennai,noida", evidence_fact_type="LOCATION", provenance_reference="Section 70B(6) IT Act", is_mandatory=1),
@@ -393,16 +384,24 @@ To, All Authorised Dealer Category-I banks
             RegulatoryApplicabilityCriterion(regulation_id=r1.id, criterion_type="RBI Regulated Entity Status", description="Organization is a payment-related entity", operator="CONTAINS", expected_value="payment system operator", evidence_fact_type="LICENSE", provenance_reference="RBI Master Direction, 2016", is_mandatory=0, criterion_group="RBI_REGULATED_ENTITY", group_operator="OR", minimum_evidence_strength="AUTHORITATIVE"),
             RegulatoryApplicabilityCriterion(regulation_id=r1.id, criterion_type="RBI Regulated Entity Status", description="Organization is another RBI regulated entity", operator="CONTAINS", expected_value="rbi regulated entity", evidence_fact_type="LICENSE", provenance_reference="RBI Master Direction, 2016", is_mandatory=0, criterion_group="RBI_REGULATED_ENTITY", group_operator="OR", minimum_evidence_strength="AUTHORITATIVE"),
         ]
-        db.add_all(criteria)
+        for crit in criteria:
+            existing_crit = db.query(RegulatoryApplicabilityCriterion).filter(
+                RegulatoryApplicabilityCriterion.regulation_id == crit.regulation_id,
+                RegulatoryApplicabilityCriterion.description == crit.description
+            ).first()
+            if not existing_crit:
+                db.add(crit)
         db.commit()
 
-        # 4. Sections & Obligations
+        # 7. Sections & Obligations
         sec_c1 = Section(id="sec-cyber-5-2", regulation_id=r_cyber.id, section_number="Section 5.2", title="Cloud Data Encryption & Patch Management", content_text="Mandatory AES-256 column encryption for customer PII. Bi-weekly vulnerability patching.")
         sec_h1 = Section(id="sec-health-2-4", regulation_id=r_health.id, section_number="Section 2.4", title="Protected Health Information (PHI) Encryption", content_text="Mandatory PHI RBAC access controls and 48-hour EHR access audit trail export.")
         sec_sec = Section(id="sec-trading-4-2", regulation_id=r_cap.id, section_number="Section 4.2", title="Algorithmic Pre-Trade Risk Checks & Kill-Switch", content_text="Mandatory automated kill-switches and pre-trade risk limits for high-frequency trading algorithms.")
         sec_kyc = Section(id="sec-4-1", regulation_id=r1.id, section_number="Section 4.1(a)", title="Periodic KYC Re-verification Cadence", content_text="Mandatory 2-year V-CIP re-verification for high-risk accounts.")
         sec_srva = Section(id="sec-srva-2-1", regulation_id=r_ocr_review.id, section_number="Para 4 & 6", title="SRVA Account Opening, Trade Settlement & Investment Governance", content_text="Cross-border trade settlement in INR via SRVA, permissible FEMA transactions, and debt investments governed by RBI Directions 2025.")
-        db.add_all([sec_c1, sec_h1, sec_sec, sec_kyc, sec_srva])
+        for s in [sec_c1, sec_h1, sec_sec, sec_kyc, sec_srva]:
+            if not db.query(Section).filter(Section.id == s.id).first():
+                db.add(s)
         db.commit()
 
         ob_c1 = Obligation(id="ob-cyber-enc", section_id=sec_c1.id, summary="Mandatory AES-256 cloud data encryption & 14-day vulnerability patch scanning.")
@@ -410,10 +409,12 @@ To, All Authorised Dealer Category-I banks
         ob_sec = Obligation(id="ob-sec-algo", section_id=sec_sec.id, summary="Mandatory automated pre-trade risk controls and circuit-breaker kill switch.")
         ob_kyc = Obligation(id="ob-kyc-2yr", section_id=sec_kyc.id, summary="Execute mandatory 2-year V-CIP re-verification for High-Risk accounts.")
         ob_srva = Obligation(id="ob-srva-audit", section_id=sec_srva.id, summary="Consolidated SRVA trade settlement, FEDAI directory listing, and FEMA Sections 10(4)/11(1) compliance.")
-        db.add_all([ob_c1, ob_h1, ob_sec, ob_kyc, ob_srva])
+        for ob in [ob_c1, ob_h1, ob_sec, ob_kyc, ob_srva]:
+            if not db.query(Obligation).filter(Obligation.id == ob.id).first():
+                db.add(ob)
         db.commit()
 
-        # 5. Requirements with Explicit UUIDs & Source-Span Grounding
+        # 8. Requirements with Explicit UUIDs & Source-Span Grounding
         req_c1 = Requirement(
             id="req-cyber-aes",
             obligation_id=ob_c1.id,
@@ -485,35 +486,50 @@ To, All Authorised Dealer Category-I banks
             statutory_reference="FEMA 1999 Sec 10(4) & 11(1)",
             affected_entities=["Authorised Dealer Cat-I Banks"]
         )
-        db.add_all([req_c1, req_h1, req_sec, req_kyc, req_srva])
+        for req in [req_c1, req_h1, req_sec, req_kyc, req_srva]:
+            if not db.query(Requirement).filter(Requirement.id == req.id).first():
+                db.add(req)
         db.commit()
 
-
-        # 6. Knowledge Graph Chains with Linked Requirement IDs
+        # 9. Knowledge Graph Chains with Linked Requirement IDs
         kg_c1 = KnowledgeGraphChain(id="kg-chain-cyber-1", regulation_id=r_cyber.id, requirement_id=req_c1.id, control_code="CTRL-SEC-09", policy_code="POL-CLOUD-SEC-2026", process_code="PRC-CYBER-INCIDENT-01", department_name="Information Security (CISO)", application_code="APP-CLOUD-INFRA")
         kg_h1 = KnowledgeGraphChain(id="kg-chain-health-1", regulation_id=r_health.id, requirement_id=req_h1.id, control_code="CTRL-PHI-02", policy_code="POL-HIPAA-2026", process_code="PRC-PATIENT-EHR-01", department_name="Clinical Operations", application_code="APP-EHR-CLINICAL")
         kg_sec = KnowledgeGraphChain(id="kg-chain-trading-1", regulation_id=r_cap.id, requirement_id=req_sec.id, control_code="CTRL-TRAD-05", policy_code="POL-TRADING-2026", process_code="PRC-ALGO-SURVEILLANCE-01", department_name="Algorithmic Trading Desk", application_code="APP-ALGO-SURVEILLANCE")
         kg_kyc = KnowledgeGraphChain(id="kg-chain-kyc-1", regulation_id=r1.id, requirement_id=req_kyc.id, control_code="CTRL-KYC-04", policy_code="POL-KYC-2026", process_code="PRC-ONBOARDING-01", department_name="Retail Banking", application_code="APP-CORE-BANKING")
         kg_srva = KnowledgeGraphChain(id="kg-chain-srva-1", regulation_id=r_ocr_review.id, requirement_id=req_srva.id, control_code="CTRL-LRS-01", policy_code="POL-LRS-2026", process_code="PRC-VOSTRO-AUDIT-01", department_name="Treasury & Forex", application_code="APP-FOREX-PORTAL")
-        db.add_all([kg_c1, kg_h1, kg_sec, kg_kyc, kg_srva])
+        for kg in [kg_c1, kg_h1, kg_sec, kg_kyc, kg_srva]:
+            if not db.query(KnowledgeGraphChain).filter(KnowledgeGraphChain.id == kg.id).first():
+                db.add(kg)
         db.commit()
 
-        # 7. Compliance Tasks Assigned to Real Enterprise Users
-        t_cyber = ComplianceTask(id="task-cyber-101", regulation_id=r_cyber.id, control_code="CTRL-SEC-09", title="Deploy AES-256 Cloud Encryption & 6-Hour Incident Trigger", description="Upgrade DevOps deployment pipelines to enforce TLS 1.3 in transit and AES-256 database encryption at rest as mandated by Directive CERT-IN/2026/881.", assignee="Sanjana", reviewer="David Vance", priority="HIGH", status="NEEDS_REVIEW", due_date=datetime.date(2026, 10, 1))
-        t_health = ComplianceTask(id="task-health-102", regulation_id=r_health.id, control_code="CTRL-PHI-02", title="Implement EHR Patient Record 48-Hour Audit Log Exporter", description="Build automated HIPAA audit logging service to export PHI access logs to clinical audit team within 48 hours.", assignee="Sanjana", reviewer="David Vance", priority="HIGH", status="NEEDS_REVIEW", due_date=datetime.date(2026, 11, 1))
-        t_sec = ComplianceTask(id="task-trading-103", regulation_id=r_cap.id, control_code="CTRL-TRAD-05", title="Deploy Algorithmic Trading Kill-Switch & 7-Year Log Retention", description="Configure pre-trade risk threshold checks and automated circuit breakers on trading engines.", assignee="Amit Patel", reviewer="Sanjana", priority="HIGH", status="IN_PROGRESS", due_date=datetime.date(2026, 8, 30))
-        t_kyc = ComplianceTask(id="task-kyc-201", regulation_id=r1.id, control_code="CTRL-KYC-04", title="Execute V-CIP 2-Year High-Risk Account Re-verification Cadence", description="Update core banking workflow to trigger mandatory V-CIP biometric re-verification for high-risk customer accounts every 24 months.", assignee="Sanjana", reviewer="David Vance", priority="HIGH", status="WAITING_APPROVAL", due_date=datetime.date(2026, 9, 30))
-        t_srva = ComplianceTask(id="task-srva-202", regulation_id=r_ocr_review.id, control_code="CTRL-LRS-01", title="Special Rupee Vostro Account Geotagged Audit Exporter", description="Configure automated quarterly geotagged audit logs for all Special Rupee Vostro Accounts under Circular 203.", assignee="Amit Patel", reviewer="Sanjana", priority="HIGH", status="IN_PROGRESS", due_date=datetime.date(2026, 10, 15))
-        db.add_all([t_cyber, t_health, t_sec, t_kyc, t_srva])
+        # 10. Compliance Tasks Assigned to Real Enterprise Users
+        t_cyber = ComplianceTask(id="task-cyber-101", regulation_id=r_cyber.id, organization_id=profile.id, control_code="CTRL-SEC-09", title="Deploy AES-256 Cloud Encryption & 6-Hour Incident Trigger", description="Upgrade DevOps deployment pipelines to enforce TLS 1.3 in transit and AES-256 database encryption at rest as mandated by Directive CERT-IN/2026/881.", assignee="Sanjana", reviewer="David Vance", priority="HIGH", status="NEEDS_REVIEW", due_date=datetime.date(2026, 10, 1))
+        t_health = ComplianceTask(id="task-health-102", regulation_id=r_health.id, organization_id=profile.id, control_code="CTRL-PHI-02", title="Implement EHR Patient Record 48-Hour Audit Log Exporter", description="Build automated HIPAA audit logging service to export PHI access logs to clinical audit team within 48 hours.", assignee="Sanjana", reviewer="David Vance", priority="HIGH", status="NEEDS_REVIEW", due_date=datetime.date(2026, 11, 1))
+        t_sec = ComplianceTask(id="task-trading-103", regulation_id=r_cap.id, organization_id=profile.id, control_code="CTRL-TRAD-05", title="Deploy Algorithmic Trading Kill-Switch & 7-Year Log Retention", description="Configure pre-trade risk threshold checks and automated circuit breakers on trading engines.", assignee="Amit Patel", reviewer="Sanjana", priority="HIGH", status="IN_PROGRESS", due_date=datetime.date(2026, 8, 30))
+        t_kyc = ComplianceTask(id="task-kyc-201", regulation_id=r1.id, organization_id=profile.id, control_code="CTRL-KYC-04", title="Execute V-CIP 2-Year High-Risk Account Re-verification Cadence", description="Update core banking workflow to trigger mandatory V-CIP biometric re-verification for high-risk customer accounts every 24 months.", assignee="Sanjana", reviewer="David Vance", priority="HIGH", status="WAITING_APPROVAL", due_date=datetime.date(2026, 9, 30))
+        t_srva = ComplianceTask(id="task-srva-202", regulation_id=r_ocr_review.id, organization_id=profile.id, control_code="CTRL-LRS-01", title="Special Rupee Vostro Account Geotagged Audit Exporter", description="Configure automated quarterly geotagged audit logs for all Special Rupee Vostro Accounts under Circular 203.", assignee="Amit Patel", reviewer="Sanjana", priority="HIGH", status="IN_PROGRESS", due_date=datetime.date(2026, 10, 15))
+        for t in [t_cyber, t_health, t_sec, t_kyc, t_srva]:
+            if not db.query(ComplianceTask).filter(ComplianceTask.id == t.id).first():
+                t.organization_id = profile.id
+                db.add(t)
         db.commit()
 
-        print("Database Seeding Completed Successfully with 100% Authentic Enterprise Knowledge Graph!")
+        logger.info("Database Seeding Completed Successfully with 100% Non-Destructive Idempotent Knowledge Graph!")
+        return {
+            "status": "COMPLETED",
+            "regulations_count": db.query(Regulation).count(),
+            "controls_count": db.query(InternalControl).count(),
+            "tasks_count": db.query(ComplianceTask).count()
+        }
 
     except Exception as e:
         db.rollback()
-        print(f"Error seeding database: {e}")
+        logger.error(f"Error seeding database: {e}")
+        raise
     finally:
-        db.close()
+        if close_db_when_done:
+            db.close()
+
 
 if __name__ == "__main__":
     seed_database_data()

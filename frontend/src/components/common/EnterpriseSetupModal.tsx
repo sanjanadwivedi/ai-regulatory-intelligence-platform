@@ -59,10 +59,14 @@ export const EnterpriseSetupModal: React.FC<EnterpriseSetupModalProps> = ({
     e.preventDefault();
     setIsSaving(true);
     try {
+      const deptsToSave = (currentProfile?.departments && currentProfile.departments.length > 0)
+        ? currentProfile.departments
+        : currentObj.depts;
+
       await onSaveProfile({
         organization_name: orgName,
         industry_sector: selectedIndustry,
-        departments: currentObj.depts,
+        departments: deptsToSave,
         country: country,
       });
       onClose();
@@ -122,7 +126,10 @@ export const EnterpriseSetupModal: React.FC<EnterpriseSetupModalProps> = ({
 
           {/* Industry Sector Selector Cards */}
           <div className="space-y-2">
-            <label className="text-slate-200 font-bold block">Select Primary Industry Sector:</label>
+            <label className="text-slate-200 font-bold flex items-center justify-between">
+              <span>Select Primary Industry Sector:</span>
+              <span className="text-[10px] text-amber-500/80 uppercase tracking-wider border border-amber-500/30 px-2 py-0.5 rounded-full bg-amber-500/10">Manually Asserted</span>
+            </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {INDUSTRIES.map((ind) => {
                 const isSelected = selectedIndustry === ind.id;
@@ -150,10 +157,12 @@ export const EnterpriseSetupModal: React.FC<EnterpriseSetupModalProps> = ({
           {/* Department Mapping Preview */}
           <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-              Auto-Mapped Internal Departments for {currentObj.name}:
+              {(currentProfile?.departments && currentProfile.departments.length > 0)
+                ? 'Existing Configured Departments (Preserved):'
+                : `Auto-Mapped Internal Departments for ${currentObj.name}:`}
             </span>
             <div className="flex flex-wrap gap-2">
-              {currentObj.depts.map((d, i) => (
+              {((currentProfile?.departments && currentProfile.departments.length > 0) ? currentProfile.departments : currentObj.depts).map((d: string, i: number) => (
                 <span key={i} className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-brand-300 text-[11px] font-semibold">
                   {d}
                 </span>

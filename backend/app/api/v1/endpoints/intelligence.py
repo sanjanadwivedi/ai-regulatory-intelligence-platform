@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import get_current_user, get_current_organization
+from app.core.security import get_current_user
 from app.models.domain import EnterpriseProfile
 from app.schemas.schemas import (
     SnapshotGenerateRequest,
@@ -49,7 +49,7 @@ def _resolve_org(current_user, db: Session) -> EnterpriseProfile:
     if user_org_id:
         profile = db.query(EnterpriseProfile).filter(EnterpriseProfile.id == user_org_id).first()
     else:
-        profile = current_profile
+        profile = db.query(EnterpriseProfile).first()
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -265,3 +265,5 @@ def export_defense_pack(
         return result
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+

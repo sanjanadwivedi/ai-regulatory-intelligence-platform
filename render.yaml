@@ -12,7 +12,7 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: DATABASE_URL
-        value: postgresql://echomind_qwtz_user:SaXqgQk64UZLXZ93JbIddso5lHlmT1hm@dpg-d9mcr9taeets739o6cjg-a/echomind_qwtz
+        sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: FRONTEND_URL

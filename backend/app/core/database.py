@@ -18,9 +18,14 @@ try:
     # Test connection
     with engine.connect() as conn:
         pass
-except Exception:
-    # Fallback to local SQLite if primary database connection fails
-    sync_db_url = "sqlite:///./compliance_platform.db"
+except Exception as exc:
+    if settings.ENVIRONMENT.lower() in ("production", "prod"):
+        raise RuntimeError(
+            f"CRITICAL: Failed to connect to primary production database. "
+            f"Silent SQLite fallback is prohibited in production: {exc}"
+        ) from exc
+    # Development/test fallback to local SQLite if primary database connection fails
+    sync_db_url = "sqlite:///./compliance_platform_test6.db"
     engine = create_engine(sync_db_url, echo=False, connect_args={"check_same_thread": False, "timeout": 30})
 
 SessionLocal = sessionmaker(

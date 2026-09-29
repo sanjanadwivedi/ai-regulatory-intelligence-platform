@@ -44,7 +44,7 @@ export const ReasoningDrawer: React.FC<ReasoningDrawerProps> = ({ data, onClose 
             <div className="absolute left-6 top-10 bottom-0 w-px bg-slate-800" />
             
             <div className="space-y-4 relative z-10">
-              <ProvenanceExplorer startNode={data.data} />
+              <ProvenanceExplorer entityType={data.type} entityId={data.data?.id} />
             </div>
           </div>
         </div>

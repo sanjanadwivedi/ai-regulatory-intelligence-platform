@@ -3,17 +3,18 @@ import { CheckCircle2, ShieldCheck, Clock, User, AlertCircle, AlertTriangle, Fil
 
 import { ComplianceTask, TaskStatus } from '../../types';
 import { Badge } from '../common/Badge';
+import { ServiceAPI } from '../../services/api';
 
 interface ReviewsConsoleProps {
   tasks: ComplianceTask[];
-  onUpdateStatus: (taskId: string, newStatus: TaskStatus) => void;
+  onUpdateStatus: (taskId: string, newStatus: TaskStatus, notes?: string) => void;
+  onRefreshTasks?: () => Promise<void>;
 }
 
-export const ReviewsConsole: React.FC<ReviewsConsoleProps> = ({ tasks = [], onUpdateStatus }) => {
+export const ReviewsConsole: React.FC<ReviewsConsoleProps> = ({ tasks = [], onUpdateStatus, onRefreshTasks }) => {
   const [activeTab, setActiveTab] = useState<'WAITING_APPROVAL' | 'NEEDS_REVIEW' | 'COMPLETED'>('WAITING_APPROVAL');
   const [selectedTask, setSelectedTask] = useState<ComplianceTask | null>(tasks[0] || null);
   const [legalNote, setLegalNote] = useState('');
-  const [signedOffTasks, setSignedOffTasks] = useState<Record<string, string>>({});
 
   const filteredTasks = (tasks || []).filter((t) => {
     if (!t) return false;
@@ -22,10 +23,20 @@ export const ReviewsConsole: React.FC<ReviewsConsoleProps> = ({ tasks = [], onUp
     return t.status === 'COMPLETED';
   });
 
-  const handleApprove = (taskId: string) => {
-    const sigHash = `SIG-4EYES-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-    setSignedOffTasks((prev) => ({ ...prev, [taskId]: sigHash }));
-    onUpdateStatus(taskId, 'COMPLETED');
+  const handleApprove = async (taskId: string) => {
+    try {
+      await ServiceAPI.completeTask(taskId, legalNote || undefined);
+      setLegalNote('');
+      if (onRefreshTasks) {
+        await onRefreshTasks();
+      }
+    } catch (error: any) {
+      if (error.response?.data?.detail) {
+        alert(`Completion failed: ${error.response.data.detail}`);
+      } else {
+        alert('An unexpected error occurred during approval.');
+      }
+    }
   };
 
   const handleRequestRevision = (taskId: string) => {
@@ -98,7 +109,6 @@ export const ReviewsConsole: React.FC<ReviewsConsoleProps> = ({ tasks = [], onUp
         <div className="lg:col-span-2 space-y-3">
           {filteredTasks.map((task) => {
             const isSelected = selectedTask?.id === task.id;
-            const sigHash = signedOffTasks[task.id];
 
             return (
               <div
@@ -121,9 +131,9 @@ export const ReviewsConsole: React.FC<ReviewsConsoleProps> = ({ tasks = [], onUp
                     <h3 className="text-sm font-bold text-white mt-1">{task.title}</h3>
                   </div>
 
-                  {sigHash && (
+                  {task.completion_signature && (
                     <span className="px-2 py-0.5 text-[9px] bg-emerald-500/20 text-emerald-400 font-mono font-bold rounded border border-emerald-500/30 flex items-center gap-1">
-                      <Key className="w-3 h-3" /> Signed: {sigHash}
+                      <Key className="w-3 h-3" /> Server Signed: {task.completion_signature.substring(0, 16)}...
                     </span>
                   )}
                 </div>

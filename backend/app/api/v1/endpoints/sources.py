@@ -6,7 +6,7 @@ import datetime
 import uuid
 from app.core.database import get_db
 from app.core.security import get_current_user, get_current_organization, require_roles
-from app.models.domain import RegulatorySource, Regulation, Section, Obligation, Requirement, KnowledgeGraphChain, ComplianceTask, AuditLog
+from app.models.domain import RegulatorySource, Regulation, Section, Obligation, Requirement, KnowledgeGraphChain, AuditLog
 
 from app.schemas.schemas import SourceResponse, SourceCreate
 from app.acl.adapters import LiveStatutoryCrawlerEngine
@@ -86,8 +86,15 @@ def trigger_fetch(
     
     extracted_titles = crawl_result.get("extracted_titles", [])
 
-    # Automatically Ingest Extracted Statutory Directives as Real DB Regulations via 2-Phase AI Pipeline
+    # Ingest Extracted Statutory Directives as Regulatory Knowledge only.
+    # ComplianceTask creation is NEVER performed here. Operational tasks
+    # are created exclusively via TaskEngine.generate_tasks after:
+    #   1. Applicability assessment is established
+    #   2. Active RegulatoryObligations exist
+    #   3. Required control mappings exist
+    #   4. Tenant organization is known
     ingested_count = 0
+    ai_recommendations = []  # Non-persisted advisory data for UI display only
     if extracted_titles:
         for t in extracted_titles[:2]:
             existing = db.query(Regulation).filter(Regulation.title == t).first()
@@ -95,7 +102,7 @@ def trigger_fetch(
                 reg_id = f"reg-live-{uuid.uuid4().hex[:8]}"
                 content_text = f"Official statutory circular fetched live over HTTP from {source.feed_url} on {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}.\n\nSubject: {t}\n\nThis statutory directive was automatically processed by the Anti-Corruption Layer (ACL) feed adapter and mapped to enterprise risk compliance controls."
                 
-                # Phase 1: AI Extraction & Classification
+                # Phase 1: AI Extraction & Classification (knowledge extraction only)
                 ai_phase1 = MultiAgentAIOrchestrator.process_extraction_only(
                     title=t, authority=source.authority_name, sector=source.sector, text=content_text
                 )
@@ -107,17 +114,17 @@ def trigger_fetch(
                     authority=source.authority_name,
                     doc_number=f"{source.authority_name.split()[0].upper()}/2026/{uuid.uuid4().hex[:4].upper()}",
                     publication_date=datetime.date.today(),
-                    effective_date=datetime.date.today() + datetime.timedelta(days=60),
+                    effective_date=None,
                     sector=source.sector,
                     region=source.region,
-                    status="ANALYZED",
+                    status="INGESTED",
                     source_url=source.feed_url,
                     content_text=content_text
                 )
                 db.add(new_reg)
                 db.flush()
 
-                # Save Sections, Obligations, and Requirements
+                # Save Sections, Obligations, and Requirements (regulatory knowledge only)
                 persisted_reqs = []
                 for sec_dict in ai_phase1.get("sections", []):
                     sec_obj = Section(
@@ -144,7 +151,7 @@ def trigger_fetch(
                                 id=f"req-{uuid.uuid4().hex[:8]}",
                                 obligation_id=obl_obj.id,
                                 requirement_text=req_dict.get("requirement_text", content_text[:200]),
-                                deadline=req_dict.get("deadline") if isinstance(req_dict.get("deadline"), datetime.date) else datetime.date.today() + datetime.timedelta(days=60),
+                                deadline=req_dict.get("deadline") if isinstance(req_dict.get("deadline"), datetime.date) else None,
                                 penalty_description=req_dict.get("penalty_description", "Statutory penalties under applicable law."),
                                 statutory_reference=req_dict.get("statutory_reference", f"{source.authority_name} Order"),
                                 affected_entities=req_dict.get("affected_entities", ["Regulated Entities"])
@@ -155,7 +162,7 @@ def trigger_fetch(
 
                 db.commit()
 
-                # Phase 2: AI Impact Mapping & Remediation Tasks (with real requirement_id UUIDs)
+                # Phase 2: AI Impact Mapping (knowledge graph chains only — NO task creation)
                 ai_phase2 = MultiAgentAIOrchestrator.process_impact_and_tasks(
                     title=t, persisted_requirements=persisted_reqs, db=db
                 )
@@ -172,28 +179,34 @@ def trigger_fetch(
                         application_code=chain_dict.get("application_code", "APP-CLOUD-INFRA")
                     ))
 
+                # AI recommended_tasks are NEVER persisted as ComplianceTask records.
+                # They are returned as non-operational advisory recommendations only.
                 for task_dict in ai_phase2.get("recommended_tasks", []):
-                    db.add(ComplianceTask(
-                        id=f"task-{uuid.uuid4().hex[:8]}",
-                        regulation_id=reg_id,
-                        control_code=task_dict.get("control_code", "CTRL-SEC-01"),
-                        title=task_dict.get("title", f"Remediate {t[:40]}"),
-                        description=task_dict.get("description", "Execute mandatory compliance remediation workflow."),
-                        assignee=task_dict.get("assignee", "Sanjana"),
-                        reviewer=task_dict.get("reviewer", "David Vance"),
-                        priority=task_dict.get("priority", "HIGH"),
-                        status="NEEDS_REVIEW",
-                        due_date=task_dict.get("due_date") if isinstance(task_dict.get("due_date"), datetime.date) else datetime.date.today() + datetime.timedelta(days=60)
-                    ))
+                    ai_recommendations.append({
+                        "type": "AI_RECOMMENDATION",
+                        "status": "NON_OPERATIONAL",
+                        "regulation_title": t,
+                        "regulation_id": reg_id,
+                        "suggested_title": task_dict.get("title", f"Review {t[:40]}"),
+                        "suggested_description": task_dict.get("description", ""),
+                        "suggested_control_code": task_dict.get("control_code", ""),
+                        "suggested_priority": task_dict.get("priority", "HIGH"),
+                        "note": "This is an AI-generated recommendation only. "
+                                "Operational compliance tasks must be created through "
+                                "the applicability assessment and obligation workflow."
+                    })
 
                 db.commit()
                 ingested_count += 1
 
 
     # Audit Log Entry with Empirical Scraped Metadata
+    user_name = getattr(current_user, "full_name", None) or getattr(current_user, "user_name", None) or getattr(current_user, "email", "Compliance Officer")
+    user_role = getattr(current_user, "role", "COMPLIANCE_OFFICER")
     audit = AuditLog(
-        user_name="System Statutory Crawler",
-        user_role="SYSTEM_CRAWLER",
+        organization_id=current_profile.id,
+        user_name=user_name,
+        user_role=user_role,
         action="LIVE_STATUTORY_CRAWL_EXECUTED",
         target_type="REGULATORY_SOURCE",
         target_id=source.id,
@@ -218,6 +231,8 @@ def trigger_fetch(
         "items_extracted": crawl_result.get("items_extracted"),
         "new_regulations_ingested": ingested_count,
         "extracted_titles": extracted_titles,
+        "ai_recommendations": ai_recommendations,
         "last_scraped_at": str(source.last_fetched_at),
         "status": "SUCCESS"
     }
+

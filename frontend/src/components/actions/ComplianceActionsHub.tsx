@@ -6,20 +6,22 @@ import { ReviewsConsole } from "../reviews/ReviewsConsole";
 
 interface ComplianceActionsHubProps {
   tasks: ComplianceTask[];
-  onUpdateStatus: (taskId: string, status: TaskStatus) => void;
+  onUpdateStatus: (taskId: string, status: TaskStatus, notes?: string) => void;
   onCreateTaskClick: () => void;
+  onRefreshTasks?: () => Promise<void>;
 }
 
 type ActionsTab = "tasks" | "signoffs";
 
 // ---------------------------------------------------------------------------
-// Compliance Actions Hub — IA v3.0 / Terminology Refinement
+// Compliance Actions Hub  IA v3.0 / Terminology Refinement
 // Tabs: Tasks (TaskKanbanBoard) + Approvals (ReviewsConsole)
 // ---------------------------------------------------------------------------
 export const ComplianceActionsHub: React.FC<ComplianceActionsHubProps> = ({
   tasks,
   onUpdateStatus,
   onCreateTaskClick,
+  onRefreshTasks,
 }) => {
   const [activeTab, setActiveTab] = useState<ActionsTab>("tasks");
 
@@ -81,7 +83,7 @@ export const ComplianceActionsHub: React.FC<ComplianceActionsHubProps> = ({
       )}
 
       {activeTab === "signoffs" && (
-        <ReviewsConsole tasks={tasks} onUpdateStatus={onUpdateStatus} />
+        <ReviewsConsole tasks={tasks} onUpdateStatus={onUpdateStatus} onRefreshTasks={onRefreshTasks} />
       )}
     </div>
   );

@@ -67,6 +67,7 @@ def evaluate_applicability(
         db=db,
         evaluated_by=user_name
     )
+    db.commit()
 
     # Return formatted list with joined regulation fields
     results = []
@@ -106,27 +107,6 @@ def list_applicability_assessments(
 
     return results
 
-@router.get("/{assessment_id}", response_model=RegulatoryApplicabilityAssessmentOut)
-def get_applicability_assessment(
-    assessment_id: str,
-    db: Session = Depends(get_db),
-    current_user: EnterpriseUser = Depends(get_current_user),
-    current_profile: EnterpriseProfile = Depends(get_current_organization)
-):
-    """
-    Retrieve a specific applicability assessment with full explainability and evidence traceability.
-    """
-    assessment = db.query(RegulatoryApplicabilityAssessment).filter(
-        RegulatoryApplicabilityAssessment.id == assessment_id,
-        RegulatoryApplicabilityAssessment.organization_id == current_profile.id
-    ).first()
-
-    if not assessment:
-        raise HTTPException(status_code=404, detail=f"Assessment {assessment_id} not found.")
-
-    reg = db.query(Regulation).filter(Regulation.id == assessment.regulation_id).first()
-    return _format_assessment(assessment, reg)
-
 @router.get("/reviews", response_model=List[ApplicabilityReviewItemOut])
 def list_applicability_reviews(
     status: Optional[str] = Query(None, description="Filter by status: OPEN, UNDER_REVIEW, RESOLVED"),
@@ -151,6 +131,27 @@ def list_applicability_reviews(
         query = query.filter(ApplicabilityReviewItem.regulation_id == regulation_id)
 
     return query.all()
+
+@router.get("/{assessment_id}", response_model=RegulatoryApplicabilityAssessmentOut)
+def get_applicability_assessment(
+    assessment_id: str,
+    db: Session = Depends(get_db),
+    current_user: EnterpriseUser = Depends(get_current_user),
+    current_profile: EnterpriseProfile = Depends(get_current_organization)
+):
+    """
+    Retrieve a specific applicability assessment with full explainability and evidence traceability.
+    """
+    assessment = db.query(RegulatoryApplicabilityAssessment).filter(
+        RegulatoryApplicabilityAssessment.id == assessment_id,
+        RegulatoryApplicabilityAssessment.organization_id == current_profile.id
+    ).first()
+
+    if not assessment:
+        raise HTTPException(status_code=404, detail=f"Assessment {assessment_id} not found.")
+
+    reg = db.query(Regulation).filter(Regulation.id == assessment.regulation_id).first()
+    return _format_assessment(assessment, reg)
 
 @router.post("/reviews/{review_item_id}/resolve")
 def resolve_applicability_review(

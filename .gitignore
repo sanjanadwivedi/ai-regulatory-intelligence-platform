@@ -1,31 +1,50 @@
-# Environment variables & secrets
+# ─── Secrets & Environment ───────────────────────────────────────────────────
 .env
 *.env
 !.env.example
 
-# Python
+# ─── Python ──────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
-*.db
-*.sqlite
-*.sqlite3
 .pytest_cache/
 .coverage
 htmlcov/
 venv/
 .venv/
 env/
-
-# Node / React
-node_modules/
+*.egg-info/
 dist/
 build/
+
+# ─── Databases (all SQLite / temp DBs — keep nothing committed) ───────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ─── Node / React ────────────────────────────────────────────────────────────
+node_modules/
+frontend/dist/
+frontend/build/
 .npm
-*.log
 npm-debug.log*
 
-# IDE & OS
+# ─── Logs ────────────────────────────────────────────────────────────────────
+*.log
+*.log.*
+
+# ─── Audit & scratch output files ────────────────────────────────────────────
+*.txt
+out*.txt
+gate_*.txt
+test_*.txt
+pytest_*.txt
+e2e_out*.txt
+scratch/
+backend/scratch/
+recovered_tests/
+
+# ─── IDE & OS ────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 .DS_Store

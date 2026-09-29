@@ -27,6 +27,7 @@ export const FactReviewConsole: React.FC<FactReviewConsoleProps> = ({ onFinalize
   const [confirmingBulk, setConfirmingBulk] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadFacts();
@@ -89,11 +90,15 @@ export const FactReviewConsole: React.FC<FactReviewConsoleProps> = ({ onFinalize
 
   const handleFinalize = async () => {
     try {
+      setError(null);
       setIsFinalizing(true);
       await ServiceAPI.finalizeDiscovery();
-      onFinalize();
-    } catch (err) {
+      await onFinalize();
+    } catch (err: any) {
       console.error('Failed to finalize discovery', err);
+      const msg = err.response?.data?.detail || 'Failed to finalize profile. Please try again.';
+      setError(msg);
+    } finally {
       setIsFinalizing(false);
     }
   };
@@ -282,11 +287,19 @@ export const FactReviewConsole: React.FC<FactReviewConsoleProps> = ({ onFinalize
         );})}
       </div>
 
-      <div className="pt-6 border-t border-slate-800 flex justify-end">
+      <div className="pt-6 border-t border-slate-800 flex items-center justify-between">
+        <div className="flex-1">
+          {error && (
+            <div className="flex items-center gap-2 text-rose-400 text-sm bg-rose-500/10 px-3 py-2 rounded-lg border border-rose-500/20 w-fit">
+              <ShieldAlert className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+        </div>
         <button
           onClick={handleFinalize}
           disabled={isFinalizing}
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary flex items-center gap-2 shrink-0"
         >
           {isFinalizing ? 'Finalizing...' : 'Confirm Organization Profile'}
           <ChevronRight className="w-4 h-4" />

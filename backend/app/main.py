@@ -47,8 +47,12 @@ async def lifespan(app: FastAPI):
     from scripts.migrate_discovery_run import migrate_db
     migrate_db()
     Base.metadata.create_all(bind=engine)
-    logger.info("Seeding initial regulatory data...")
-    seed_database_data()
+    # Production Safety: Explicit environment gating prevents demo data seeding in production
+    if settings.ENVIRONMENT.lower() in ("production", "prod"):
+        logger.info("Production environment active (ENVIRONMENT=%s). Startup demo data seeding is skipped.", settings.ENVIRONMENT)
+    else:
+        logger.info("Seeding initial regulatory data for environment: %s...", settings.ENVIRONMENT)
+        seed_database_data()
 
     # Start periodic source-URL re-verification scheduler
     from app.services.scheduler import start_scheduler, stop_scheduler

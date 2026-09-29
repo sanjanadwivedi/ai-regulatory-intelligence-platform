@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # Final Production Stage
 FROM python:3.11-slim
@@ -21,13 +21,13 @@ FROM python:3.11-slim
 WORKDIR /app
 
 RUN groupadd -g 999 appgroup && \
-    useradd -r -u 999 -g appgroup appuser
+    useradd -r -u 999 -g appgroup -m -d /home/appuser appuser
 
-COPY --from=builder /root/.local /root/.local
+COPY --from=builder /install /usr/local
 COPY . /app
+RUN chown -R appuser:appgroup /app
 
-ENV PATH=/root/.local/bin:$PATH \
-    PYTHONPATH=/app
+ENV PYTHONPATH=/app
 
 USER appuser
 

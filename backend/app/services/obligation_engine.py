@@ -115,13 +115,17 @@ class ObligationEngine:
         obligations: List[RegulatoryObligation] = []
         reg_title = (regulation.title or "").lower()
 
+        is_certin = (regulation.id == "reg-cyber-2026" or "cert-in" in reg_title or "70b" in reg_title)
+        default_url = "https://www.cert-in.org.in/Directions70B.jsp" if is_certin else (regulation.source_url or "")
+        default_ref = "Section 70B(6) IT Act, 2000" if is_certin else (regulation.doc_number or f"Statutory provisions under {regulation.authority}")
+
         # Build base evidence links
         reg_evidence_refs = [{
             "regulation_id": regulation.id,
             "title": regulation.title,
             "authority": regulation.authority,
-            "source_url": regulation.resolved_source_url or regulation.source_url or "https://www.cert-in.org.in/Directions70B.jsp",
-            "statutory_reference": regulation.doc_number or "Section 70B(6) IT Act, 2000"
+            "source_url": regulation.resolved_source_url or regulation.source_url or default_url,
+            "statutory_reference": regulation.doc_number or default_ref
         }]
 
         org_evidence_refs = [{

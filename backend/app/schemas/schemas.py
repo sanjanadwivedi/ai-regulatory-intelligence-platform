@@ -145,12 +145,16 @@ class TaskBase(BaseModel):
     title: str
     description: Optional[str] = None
     assignee: str
+    assignee_id: Optional[str] = None
     reviewer: Optional[str] = None
+    reviewer_id: Optional[str] = None
+    completion_signature: Optional[str] = None
     priority: str = "HIGH"
     status: str = "OPEN" # OPEN, IN_PROGRESS, BLOCKED, COMPLETED, REOPENED, NEEDS_REVIEW, MY_TASKS, WAITING_APPROVAL, DUE_TODAY, CANCELLED, SUPERSEDED
     due_date: Optional[date] = None
     organization_id: Optional[str] = None
     regulatory_obligation_id: Optional[str] = None
+    control_id: Optional[str] = None
     responsible_function: Optional[str] = None
     due_rule: Optional[str] = None
     frequency: Optional[str] = None
@@ -188,6 +192,7 @@ class TaskUpdate(BaseModel):
 
 class TaskAssignRequest(BaseModel):
     assignee: str
+    assignee_id: Optional[str] = None
     responsible_function: Optional[str] = None
     notes: Optional[str] = None
 
@@ -206,7 +211,9 @@ class EvidenceCreate(BaseModel):
     file_name: str
     file_url: Optional[str] = None
     description: Optional[str] = None
+    evidence_strength: Optional[str] = "UNKNOWN"
     evidence_date: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
 
 class EvidenceResponse(BaseModel):
     id: str
@@ -598,3 +605,179 @@ class DefensePackExportResponse(BaseModel):
     engine_version: str
     generated_at: Optional[str] = None
     manifest: Optional[Dict[str, Any]] = None
+
+# --- Control Framework Schemas ---
+class ControlStatus(str, Enum):
+    DRAFT = "DRAFT"
+    UNDER_REVIEW = "UNDER_REVIEW"
+    IMPLEMENTED = "IMPLEMENTED"
+    GAPPED = "GAPPED"
+    FAILED = "FAILED"
+    RETIRED = "RETIRED"
+
+class InternalControlBase(BaseModel):
+    control_code: str
+    name: str
+    description: str
+    category: str
+    owner_department: str
+    status: Optional[str] = "DRAFT"
+    implementation_notes: Optional[str] = None
+
+class InternalControlCreate(InternalControlBase):
+    pass
+
+class InternalControlUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    owner_department: Optional[str] = None
+    status: Optional[str] = None
+    implementation_notes: Optional[str] = None
+
+class InternalControlResponse(InternalControlBase):
+    id: str
+    organization_id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ObligationControlMappingCreate(BaseModel):
+    rationale: Optional[str] = None
+    mapping_source: Optional[str] = "MANUAL"
+
+class ObligationControlMappingResponse(BaseModel):
+    id: str
+    organization_id: str
+    obligation_id: str
+    control_id: str
+    rationale: Optional[str] = None
+    mapping_source: str
+    active: int
+    created_at: datetime
+    created_by: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class ControlAssessmentResponse(BaseModel):
+    id: str
+    organization_id: str
+    control_id: str
+    assessment_status: str
+    control_state: str
+    evidence_summary: str
+    missing_information: Optional[Dict[str, Any]] = None
+    evaluated_at: datetime
+    evaluated_by: str
+    engine_version: str
+
+    class Config:
+        from_attributes = True
+
+
+
+# --- Regulatory Intelligence ---
+class RegulatoryIntelligenceSummaryResponse(BaseModel):
+    total_regulations: int
+    new_regulations: int
+    updated_regulations: int
+    changes_requiring_review: int
+    affected_assessments: int
+    affected_obligations: int
+    affected_tasks: int
+
+class RegulatoryChangeFeedItem(BaseModel):
+    change_id: str
+    regulation_id: str
+    regulation_name: str
+    previous_version: Optional[str]
+    new_version: str
+    change_type: str
+    detected_timestamp: datetime
+    effective_date: Optional[date]
+    source: Optional[str]
+    review_status: str
+    affected_assessment_count: int
+    affected_obligation_count: int
+    affected_task_count: int
+
+class RegulatoryChangeFeedResponse(BaseModel):
+    items: List[RegulatoryChangeFeedItem]
+    total: int
+    page: int
+    size: int
+
+class RegulatoryChangeDetailResponse(BaseModel):
+    change_id: str
+    regulation_id: str
+    regulation_name: str
+    previous_version: Optional[str]
+    new_version: str
+    change_type: str
+    detected_timestamp: datetime
+    effective_date: Optional[date]
+    source: Optional[str]
+    review_status: str
+    review_notes: Optional[str]
+    reviewed_at: Optional[datetime]
+    reviewed_by: Optional[str]
+    diff_hunks: Optional[List[dict]]
+    changed_sections: Optional[List[dict]]
+    affected_assessments: List[str]
+    affected_obligations: List[str]
+    affected_tasks: List[str]
+
+class RegulatoryChangeReviewRequest(BaseModel):
+    decision: str
+    review_notes: Optional[str] = None
+
+class RegulatoryChangeReviewResponse(BaseModel):
+    status: str
+    change_id: str
+    review_status: str
+
+class RegulatoryObligationImpactOut(BaseModel):
+    id: str
+    organization_id: str
+    regulatory_change_id: str
+    obligation_id: str
+    impact_status: str
+    review_status: str
+    reason: Optional[str] = None
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ImpactPropagationSummary(BaseModel):
+    obligations_affected: int
+    controls_affected: int
+    tasks_affected: int
+    human_review_required: int
+
+class ImpactPropagationResponse(BaseModel):
+    regulatory_change_id: str
+    organization_id: str
+    impact_status: str
+    summary: ImpactPropagationSummary
+    mapping_gap: bool
+    reason: Optional[str] = None
+
+class ProvenanceNodeResponse(BaseModel):
+    id: str
+    type: str # REGULATION, APPLICABILITY, OBLIGATION, CONTROL, TASK, EVIDENCE
+    title: str
+    status: Optional[str] = None
+    meta: Optional[str] = None
+    link: Optional[str] = None
+
+class ProvenanceChainResponse(BaseModel):
+    nodes: List[ProvenanceNodeResponse]
+    status: str = "AVAILABLE"
+    message: Optional[str] = None

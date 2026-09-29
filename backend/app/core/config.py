@@ -14,10 +14,14 @@ logger = logging.getLogger("compliance_platform.config")
 def get_secret_key() -> str:
     """Get or generate a secure SECRET_KEY."""
     env_key = os.getenv("SECRET_KEY")
-    if env_key and env_key != "change-this-to-a-secure-random-secret-key-in-production":
+    insecure_defaults = {
+        "change-this-to-a-secure-random-secret-key-in-production",
+        "super-secret-key-change-in-production"
+    }
+    if env_key and env_key not in insecure_defaults:
         return env_key
     if os.getenv("ENVIRONMENT") == "production":
-        raise ValueError("❌ CRITICAL: SECRET_KEY must be set in production environment!")
+        raise ValueError("❌ CRITICAL: SECRET_KEY must be set to a secure secret in production environment!")
     # Development fallback
     return env_key or "super-secret-key-change-in-production"
 
@@ -31,7 +35,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./compliance_platform.db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./compliance_platform_test6.db")
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
     SECONDARY_LLM_PROVIDER: str = os.getenv("SECONDARY_LLM_PROVIDER", "")
     SECONDARY_LLM_API_KEY: str = os.getenv("SECONDARY_LLM_API_KEY", "")
@@ -47,4 +51,7 @@ if settings.ENVIRONMENT == "production" and settings.SECRET_KEY == "super-secret
     raise ValueError("❌ CRITICAL: Change SECRET_KEY before production deployment!")
 elif settings.SECRET_KEY == "super-secret-key-change-in-production":
     logger.warning("SECURITY WARNING: Using default insecure SECRET_KEY. Set SECRET_KEY in .env for production!")
+
+if settings.ENVIRONMENT == "production" and ("localhost" in settings.FRONTEND_URL or "127.0.0.1" in settings.FRONTEND_URL):
+    logger.warning("SECURITY WARNING: FRONTEND_URL points to localhost in production mode (%s). Set FRONTEND_URL to your public domain!", settings.FRONTEND_URL)
 

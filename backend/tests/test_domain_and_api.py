@@ -58,15 +58,13 @@ def test_delta_analyzer_engine():
     assert len(delta["repealed_requirements"]) >= 1
 
 
-def test_re_extract_validation():
-    from app.core.database import SessionLocal
+def test_re_extract_validation(db_session):
     from app.models.domain import Regulation, AuditLog
     from app.api.v1.endpoints.regulations import re_extract_regulation
 
-    db = SessionLocal()
     try:
         # Test 1: Non-existent regulation_id
-        res_missing = re_extract_regulation("reg-non-existent-999", db=db, current_user=None)
+        res_missing = re_extract_regulation("reg-non-existent-999", db=db_session, current_user=None)
         assert res_missing["status"] == "FAILED"
         assert "not found" in res_missing["error_message"]
 
@@ -86,27 +84,40 @@ def test_re_extract_validation():
 
         )
 
-        db.add(empty_reg)
-        db.commit()
+        db_session.add(empty_reg)
+        db_session.commit()
 
-        res_empty = re_extract_regulation("reg-test-empty-url", db=db, current_user=None)
+        res_empty = re_extract_regulation("reg-test-empty-url", db=db_session, current_user=None)
         assert res_empty["status"] == "FAILED"
         assert "source_url is empty" in res_empty["error_message"]
 
         # Clean up test empty reg
-        db.delete(empty_reg)
-        db.commit()
+        db_session.delete(empty_reg)
+        db_session.commit()
 
     finally:
-        db.close()
+        pass
 
 
-def test_batch_re_extract_endpoint():
-    from app.core.database import SessionLocal
+def test_batch_re_extract_endpoint(db_session):
     from app.api.v1.endpoints.regulations import batch_re_extract_regulations
-    from app.models.domain import AuditLog
+    from app.models.domain import AuditLog, Regulation
+    import datetime
 
-    db = SessionLocal()
+    # Arrange: insert a dummy regulation with authority "RBI"
+    dummy_reg = Regulation(
+        id="reg-rbi-batch-test",
+        title="Batch Test Reg",
+        authority="RBI",
+        publication_date=datetime.date.today(),
+        sector="Finance",
+        region="India",
+        content_text="Some content",
+        source_url="http://rbi.test"
+    )
+    db_session.add(dummy_reg)
+    db_session.commit()
+
     try:
         payload = {
             "filters": {"authority": "RBI"},
@@ -115,7 +126,7 @@ def test_batch_re_extract_endpoint():
             "dry_run": True
         }
 
-        res = batch_re_extract_regulations(payload, db=db, current_user=None)
+        res = batch_re_extract_regulations(payload, db=db_session, current_user=None)
 
         assert res["status"] == "COMPLETED"
         assert res["total_regulations_found"] >= 1
@@ -124,11 +135,13 @@ def test_batch_re_extract_endpoint():
         assert res["summary"]["batch_audit_id"] is not None
 
         # Verify AuditLog created
-        audit = db.query(AuditLog).filter(AuditLog.id == res["summary"]["batch_audit_id"]).first()
+        audit = db_session.query(AuditLog).filter(AuditLog.id == res["summary"]["batch_audit_id"]).first()
         assert audit is not None
         assert audit.action == "BATCH_RE_EXTRACTION"
     finally:
-        db.close()
+        # Cleanup
+        db_session.delete(dummy_reg)
+        db_session.commit()
 
 
 def test_strict_authentication_enforcement():
@@ -170,16 +183,14 @@ def test_ssrf_protection_validator():
         _validate_url(url)
 
 
-def test_secure_login_endpoint():
-    from app.core.database import SessionLocal
+def test_secure_login_endpoint(db_session):
     from app.api.v1.endpoints.auth import login, LoginRequest
     from app.models.domain import EnterpriseUser
     from app.core.security import get_password_hash
     from fastapi import HTTPException, Response
 
-    db = SessionLocal()
     try:
-        user = db.query(EnterpriseUser).filter(EnterpriseUser.email == "test_auth_user@example.com").first()
+        user = db_session.query(EnterpriseUser).filter(EnterpriseUser.email == "test_auth_user@example.com").first()
         if not user:
             user = EnterpriseUser(
                 full_name="Test User",
@@ -187,32 +198,32 @@ def test_secure_login_endpoint():
                 email="test_auth_user@example.com",
                 hashed_password=get_password_hash("testpass123")
             )
-            db.add(user)
-            db.commit()
+            db_session.add(user)
+            db_session.commit()
 
         # 1. Non-existent user must fail (no auto-registration)
         req_unknown = LoginRequest(email="nonexistent_user@example.com", password="somepassword")
         res_dummy = Response()
         with pytest.raises(HTTPException) as exc_info:
-            login(response=res_dummy, login_data=req_unknown, db=db)
+            login(response=res_dummy, login_data=req_unknown, db=db_session)
         assert exc_info.value.status_code == 401
         assert "User not found" in exc_info.value.detail
 
         # 2. Existing user with wrong password must fail
         req_wrong_pass = LoginRequest(email="test_auth_user@example.com", password="wrongpassword")
         with pytest.raises(HTTPException) as exc_info:
-            login(response=res_dummy, login_data=req_wrong_pass, db=db)
+            login(response=res_dummy, login_data=req_wrong_pass, db=db_session)
         assert exc_info.value.status_code == 401
         assert "Incorrect password" in exc_info.value.detail
 
         # 3. Existing user with correct password succeeds and sets cookie
         req_valid = LoginRequest(email="test_auth_user@example.com", password="testpass123")
         res_valid = Response()
-        token_data = login(response=res_valid, login_data=req_valid, db=db)
+        token_data = login(response=res_valid, login_data=req_valid, db=db_session)
         assert "access_token" in token_data
         assert token_data["full_name"] == "Test User"
     finally:
-        db.close()
+        pass
 
 
 

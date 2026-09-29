@@ -113,6 +113,7 @@ export interface ComplianceTask {
   due_rule?: string;
   frequency?: string;
   trigger_type?: string | null;
+  completion_signature?: string;
   trigger_offset_value?: number | null;
   trigger_offset_unit?: string | null;
   trigger_event_id?: string | null;
@@ -269,7 +270,18 @@ export interface RegulatoryApplicabilityAssessment {
     reason: string;
     authoritative_source?: string;
   }>;
-  missing_information?: string[];
+  missing_information?: Array<{
+    criterion_id: string;
+    criterion?: string;
+    status?: string;
+    required_fact?: string;
+    question?: string;
+    reason?: string;
+    is_mandatory?: boolean;
+    minimum_evidence_strength?: string;
+    evidence_required?: string;
+    [key: string]: any;
+  }>;
   organization_evidence_refs?: Array<{
     type: string;
     value: string;
@@ -333,7 +345,18 @@ export interface RegulatoryObligation {
     matched_activities: string[];
     applicability_assessment_id: string;
   }>;
-  missing_information?: string[];
+  missing_information?: Array<{
+    criterion_id: string;
+    criterion?: string;
+    status?: string;
+    required_fact?: string;
+    question?: string;
+    reason?: string;
+    is_mandatory?: boolean;
+    minimum_evidence_strength?: string;
+    evidence_required?: string;
+    [key: string]: any;
+  }>;
   status: 'ACTIVE' | 'SUPERSEDED' | 'REQUIRES_REVIEW';
   priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   engine_version: string;
@@ -341,7 +364,7 @@ export interface RegulatoryObligation {
   updated_at?: string;
 }
 
-export type PostureStatus = 'HEALTHY' | 'ATTENTION_REQUIRED' | 'CRITICAL' | 'REQUIRES_REVIEW';
+export type PostureStatus = 'HEALTHY' | 'ATTENTION_REQUIRED' | 'CRITICAL' | 'REQUIRES_REVIEW' | 'SATISFIED' | 'CONTROL_GAP' | 'NO_APPLICABLE_REQUIREMENTS' | 'REVIEW_REQUIRED';
 export type AlertSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 export type AlertType =
   | 'OVERDUE_TASK'
@@ -494,3 +517,133 @@ export interface ComplianceDefensePack {
   evidence_manifests?: ComplianceEvidenceManifest[];
 }
 
+// --- Posture Breakdown Types (used by UnifiedAnalyticsDashboard) ---
+export interface OrganizationPostureResponse extends CompliancePostureResponse {
+  evaluated_at: string;
+  engine_version?: string;
+  compliance_percentage?: number;
+  total_applicable_obligations?: number;
+  total_satisfied_obligations?: number;
+  total_control_gaps?: number;
+  total_review_required?: number;
+}
+
+export interface RegulationPostureResponse {
+  regulation_id: string;
+  regulation_title: string;
+  posture_status: string;
+  applicable_obligation_count: number;
+  satisfied_obligation_count: number;
+  control_gap_count: number;
+}
+
+export interface ObligationPostureResponse {
+  obligation_id: string;
+  obligation_title: string;
+  regulation_id: string;
+  compliance_status: string;
+  posture_status?: string;
+  review_required?: boolean;
+  task_count: number;
+  completed_tasks: number;
+  evidence_count: number;
+  missing_information?: Record<string, any>;
+  mapped_control_id?: string | null;
+  mapped_control_title?: string | null;
+}
+
+// --- Internal Controls Types (used by ControlsLibrary) ---
+export interface InternalControl {
+  id: string;
+  organization_id: string;
+  control_code: string;
+  name: string;
+  description: string;
+  category: string;
+  owner_department: string;
+  status: string;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface ObligationControlMapping {
+  id: string;
+  control_id: string;
+  obligation_id: string;
+  rationale: string;
+  created_at: string;
+}
+
+// --- Regulatory Intelligence (Phase 21A APIs) ---
+export interface RegulatoryIntelligenceSummary {
+  total_regulations: number;
+  new_regulations: number;
+  updated_regulations: number;
+  changes_requiring_review: number;
+  affected_assessments: number;
+  affected_obligations: number;
+  affected_tasks: number;
+}
+
+export interface RegulatoryChangeFeedItem {
+  change_id: string;
+  regulation_id: string;
+  regulation_name: string;
+  previous_version: string | null;
+  new_version: string;
+  change_type: string;
+  detected_timestamp: string;
+  effective_date: string | null;
+  source: string | null;
+  review_status: string;
+  affected_assessment_count: number;
+  affected_obligation_count: number;
+  affected_task_count: number;
+}
+
+export interface RegulatoryChangeFeedResponse {
+  items: RegulatoryChangeFeedItem[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+export interface DiffHunk {
+  section_id?: string;
+  old_text?: string;
+  new_text?: string;
+  type?: string;
+  [key: string]: any;
+}
+
+export interface RegulatoryChangeDetail {
+  change_id: string;
+  regulation_id: string;
+  regulation_name: string;
+  previous_version: string | null;
+  new_version: string;
+  change_type: string;
+  detected_timestamp: string;
+  effective_date: string | null;
+  source: string | null;
+  review_status: string;
+  review_notes: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  diff_hunks: DiffHunk[] | null;
+  changed_sections: any[] | null;
+  affected_assessments: string[];
+  affected_obligations: string[];
+  affected_tasks: string[];
+}
+
+export interface RegulatoryChangeReviewRequest {
+  decision: string;
+  review_notes?: string;
+}
+
+export interface RegulatoryChangeReviewResponse {
+  status: string;
+  change_id: string;
+  review_status: string;
+}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GitCompare, PlusCircle, AlertCircle, MinusCircle, ShieldCheck, History } from 'lucide-react';
 import { Badge } from '../common/Badge';
+import { apiService as ServiceAPI } from '../../services/api';
 
 interface DeltaRequirement {
   section: string;
@@ -16,48 +17,87 @@ interface DeltaRequirement {
 interface RegulationDeltaAnalyzerProps {
   regulationTitle?: string;
   docNumber?: string;
+  regulationId?: string;
 }
 
 export const RegulationDeltaAnalyzer: React.FC<RegulationDeltaAnalyzerProps> = ({
-  regulationTitle = 'Master Direction – Know Your Customer (KYC) Direction, 2026',
-  docNumber = 'RBI/2026-27/104',
+  regulationTitle,
+  docNumber,
+  regulationId,
 }) => {
   const [selectedTab, setSelectedTab] = useState<'ADDED' | 'MODIFIED' | 'REPEALED'>('ADDED');
+  const [loading, setLoading] = useState(false);
+  const [changes, setChanges] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  const added: DeltaRequirement[] = [
-    {
-      section: 'Section 7.3',
-      clause_title: 'Mandatory Video-Based Customer Identification Process (V-CIP)',
-      description: 'Digital re-verification via V-CIP is mandated for all high-risk customer updates where physical branch attendance is waived. Live geotagging and biometric liveness checks must be logged with encrypted timestamping.',
-      severity: 'HIGH',
-      affected_control: 'CTRL-KYC-04'
-    },
-    {
-      section: 'Clause 12.2',
-      clause_title: 'Shortened 24-Hour FIU Alerting Threshold',
-      description: 'Automated monitoring microservices must flag cross-border transactions exceeding $10,000 equivalent within 24 hours to the Financial Intelligence Unit (FIU-IND).',
-      severity: 'HIGH',
-      affected_control: 'CTRL-AML-12'
-    }
-  ];
+  React.useEffect(() => {
+    if (!regulationId) return;
+    const fetchChanges = async () => {
+      setLoading(true);
+      try {
+        const data = await ServiceAPI.getRegulatoryChanges(0, 10, regulationId);
+        setChanges(data.items || []);
+      } catch (err) {
+        setError('Failed to load regulatory changes.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchChanges();
+  }, [regulationId]);
 
-  const modified: DeltaRequirement[] = [
-    {
-      section: 'Section 4.1(a)',
-      clause_title: 'Periodic Re-verification Cadence for High-Risk Accounts',
-      previous_version: 'High-Risk Customers: Mandatory re-verification once every three (3) years.',
-      new_version: 'High-Risk Customers: Mandatory re-verification once every two (2) years (shortened by 12 months).',
-      affected_control: 'CTRL-KYC-04'
-    }
-  ];
+  if (loading) {
+    return <div className="p-6 text-slate-400">Loading version changes...</div>;
+  }
 
-  const repealed: DeltaRequirement[] = [
-    {
-      section: 'Clause 8.4',
-      clause_title: 'Physical In-Person Branch Attendance Requirement',
-      reason: 'Waived and replaced in favor of authenticated V-CIP digital updates with live geotagging logs.'
-    }
-  ];
+  if (error) {
+    return <div className="p-6 text-rose-400">{error}</div>;
+  }
+
+  if (!changes || changes.length === 0) {
+    return (
+      <div className="p-12 text-center border-2 border-dashed border-slate-800 rounded-2xl">
+        <GitCompare className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-white mb-2">No Regulatory Changes Detected</h2>
+        <p className="text-slate-400 max-w-md mx-auto">
+          The version analyzer only displays data when a genuine <span className="font-mono text-slate-300">RegulatoryChange</span> record has been persisted by the backend. There are currently no updates or version diffs for this regulation.
+        </p>
+      </div>
+    );
+  }
+
+  const latestChange = changes[0];
+  const added: DeltaRequirement[] = [];
+  const modified: DeltaRequirement[] = [];
+  const repealed: DeltaRequirement[] = [];
+
+  // Parse diff_hunks if they exist
+  if (latestChange.change.diff_hunks) {
+     latestChange.change.diff_hunks.forEach((hunk: any) => {
+        if (hunk.hunk_type === 'ADDED') {
+           added.push({
+             section: hunk.section_id || 'Unknown',
+             clause_title: 'Added Content',
+             description: hunk.content
+           });
+        } else if (hunk.hunk_type === 'MODIFIED') {
+           modified.push({
+             section: hunk.section_id || 'Unknown',
+             clause_title: 'Modified Content',
+             previous_version: hunk.old_content,
+             new_version: hunk.content
+           });
+        } else if (hunk.hunk_type === 'REMOVED') {
+           repealed.push({
+             section: hunk.section_id || 'Unknown',
+             clause_title: 'Repealed Content',
+             reason: hunk.content
+           });
+        }
+     });
+  }
+
+
 
   return (
     <div className="space-y-6">
@@ -68,7 +108,7 @@ export const RegulationDeltaAnalyzer: React.FC<RegulationDeltaAnalyzerProps> = (
             <GitCompare className="w-5 h-5 text-indigo-400" />
             <h2 className="text-lg font-bold text-white tracking-tight">Regulation Version Changes & Diff</h2>
             <span className="px-2 py-0.5 text-xs font-mono bg-indigo-500/20 text-indigo-300 rounded border border-indigo-500/30">
-              v1.0 (2024) vs v2.0 (2026)
+              {latestChange.change.previous_version_id?.slice(0,8) || 'Previous'} vs {latestChange.change.new_version_id?.slice(0,8) || 'Current'}
             </span>
           </div>
           <p className="text-xs text-slate-400">
@@ -155,11 +195,11 @@ export const RegulationDeltaAnalyzer: React.FC<RegulationDeltaAnalyzerProps> = (
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs pt-2">
                   <div className="p-3 rounded-xl bg-slate-950 border border-slate-900 space-y-1">
-                    <span className="text-[10px] uppercase font-bold text-rose-400 block">Previous Text (v1.0)</span>
+                    <span className="text-[10px] uppercase font-bold text-rose-400 block">Previous Text</span>
                     <p className="text-slate-400 font-mono text-[11px] line-through">{item.previous_version}</p>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-900 border border-emerald-500/30 space-y-1">
-                    <span className="text-[10px] uppercase font-bold text-emerald-400 block">New Enforced Text (v2.0)</span>
+                    <span className="text-[10px] uppercase font-bold text-emerald-400 block">New Enforced Text</span>
                     <p className="text-slate-200 font-mono text-[11px] font-semibold">{item.new_version}</p>
                   </div>
                 </div>

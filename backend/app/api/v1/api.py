@@ -16,7 +16,12 @@ from app.api.v1.endpoints import (
     obligations,
     events,
     monitoring,
-    intelligence
+    intelligence,
+    controls,
+    posture,
+    regulatory_versions,
+    regulatory_intelligence,
+    provenance
 )
 
 api_router = APIRouter()
@@ -38,4 +43,9 @@ api_router.include_router(copilot.router, prefix="/copilot", tags=["RAG Copilot 
 api_router.include_router(analytics.router, prefix="/analytics", tags=["Reporting Domain"])
 api_router.include_router(audit.router, prefix="/audit-logs", tags=["Audit Trail Domain"])
 api_router.include_router(enterprise.router, prefix="/enterprise", tags=["Enterprise Settings"])
+api_router.include_router(controls.router, prefix="/controls", tags=["Internal Control Framework Domain"])
+api_router.include_router(posture.router, prefix="/posture", tags=["Compliance Posture Dashboard Domain"])
+api_router.include_router(regulatory_versions.router, prefix="/regulatory/versions", tags=["Regulatory Version Control"])
+api_router.include_router(regulatory_intelligence.router, prefix="/regulatory-intelligence", tags=["Regulatory Intelligence"])
+api_router.include_router(provenance.router, prefix="/provenance", tags=["Provenance Domain"])
 
